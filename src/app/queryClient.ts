@@ -32,11 +32,7 @@ export const queryKeys = {
   goal: (metric: string) => ['goals', metric] as const,
   goals: () => ['goals'] as const,
   outbox: () => ['outbox'] as const,
-  lastImport: (providerId: string) => ['imports', providerId] as const,
 };
 
 /** Everything derived from measurement rows. */
 export const MEASUREMENTS_KEY = ['measurements'] as const;
-
-/** Last-import timestamps for every provider. */
-export const IMPORTS_KEY = ['imports'] as const;

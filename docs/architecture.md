@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TB
   subgraph UI["UI — src/features, src/shared/components"]
-    Screens["Dashboard · History · Form · Sources · Debug"]
+    Screens["Today · Metric detail · History · Form · Debug"]
     Banner["SyncBanner"]
   end
 

@@ -5,7 +5,6 @@ import type { MetricType } from '@/domain/measurement/types';
 export type TabParamList = {
   Dashboard: undefined;
   History: undefined;
-  Integrations: undefined;
   Debug: undefined;
 };
 

@@ -11,7 +11,6 @@ import { useSyncStatusStore } from '@/shared/state/syncStatusStore';
 import { INITIAL_SYNC_STATUS } from '@/sync/types';
 import { createTestServices } from '@/test/createTestServices';
 import { DashboardScreen } from './DashboardScreen';
-import { describeImportAll } from './hooks/useImportAll';
 
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -41,7 +40,7 @@ beforeEach(() => {
 });
 
 describe('DashboardScreen', () => {
-  it('starts with a zero card for every metric and an import button', async () => {
+  it('starts clean: a zero card for every metric and no import action', async () => {
     const context = await setup();
     await show(context);
 
@@ -58,20 +57,15 @@ describe('DashboardScreen', () => {
         expected[metric]!,
       );
     }
-    expect(screen.getByTestId('import-data')).toBeTruthy();
+    expect(screen.queryByText(/import/i)).toBeNull();
+    expect(screen.getByTestId('dashboard-add-weight')).toBeTruthy();
   });
 
-  it('fills the cards with today values after Import data', async () => {
+  it('shows today values once dummy data has been imported', async () => {
     const context = await setup();
+    await context.services.healthImport.importAll();
     await show(context);
-    await screen.findByTestId('dashboard-hint');
 
-    await fireEvent.press(screen.getByTestId('import-data'));
-
-    // FitBand imports; Pulse declines once and ScaleCo is not installed.
-    expect(await screen.findByTestId('import-message')).toHaveTextContent(
-      'Imported 150 readings. 2 sources were not available. Open Sources to see why.',
-    );
     await waitFor(() =>
       expect(screen.getByTestId('today-steps-value')).not.toHaveTextContent(
         '0 steps',
@@ -79,6 +73,9 @@ describe('DashboardScreen', () => {
     );
     expect(screen.getByTestId('today-weight-value')).not.toHaveTextContent(
       '0.0 kg',
+    );
+    expect(screen.getByTestId('today-water-value')).toHaveTextContent(
+      /glasses?$/,
     );
     expect(screen.queryByTestId('dashboard-hint')).toBeNull();
   });
@@ -147,37 +144,6 @@ describe('DashboardScreen', () => {
 
     expect(await screen.findByTestId('sync-banner')).toHaveTextContent(
       'Offline. 1 change saved on this device will sync when you reconnect.',
-    );
-  });
-});
-
-describe('describeImportAll', () => {
-  const report = (imported: number, failed = false) => ({
-    providerId: 'p',
-    imported,
-    updated: 0,
-    skipped: 0,
-    rejected: 0,
-    failure: failed ? ({ kind: 'unavailable', message: 'x' } as const) : null,
-  });
-
-  it('counts what was stored', () => {
-    expect(describeImportAll([report(3), report(1)])).toBe(
-      'Imported 4 readings.',
-    );
-    expect(describeImportAll([report(1)])).toBe('Imported 1 reading.');
-  });
-
-  it('says so when there was nothing new', () => {
-    expect(describeImportAll([report(0)])).toBe('Already up to date.');
-  });
-
-  it('mentions sources that could not be read', () => {
-    expect(describeImportAll([report(2), report(0, true)])).toBe(
-      'Imported 2 readings. 1 source was not available. Open Sources to see why.',
-    );
-    expect(describeImportAll([report(0, true)])).toBe(
-      'No source could be read. Open Sources to see why.',
     );
   });
 });

@@ -14,6 +14,7 @@ import { Screen } from '@/shared/components/Screen';
 import { useSyncStatusStore } from '@/shared/state/syncStatusStore';
 import { colors, spacing, typography } from '@/shared/theme';
 import { formatDateTime, formatTime } from '@/shared/utils/dates';
+import { describeImportReports } from './importSummary';
 import { generateSeedReadings } from './seedData';
 
 const SEED_CHUNK = 500;
@@ -70,8 +71,15 @@ function Toggle({ label, value, onChange, testID }: ToggleProps) {
  * modes the sync engine is built for, and watch the outbox react.
  */
 export function DebugScreen() {
-  const { debug, engine, outbox, measurements, queryClient, clock } =
-    useServices();
+  const {
+    debug,
+    engine,
+    outbox,
+    measurements,
+    queryClient,
+    clock,
+    healthImport,
+  } = useServices();
   const { conditions, server, healthSimulation } = debug;
   const current = useSyncExternalStore(conditions.subscribe, conditions.get);
   const status = useSyncStatusStore();
@@ -116,6 +124,15 @@ export function DebugScreen() {
     runTask('retry', async () => {
       const result = await engine.retryFailed();
       return `Retried. Pushed ${result.pushed}, rejected ${result.rejected}.`;
+    });
+
+  /** Fills the app with 30 days of readings from the mock health providers. */
+  const importDummyData = () =>
+    runTask('import', async () => {
+      const reports = await healthImport.importAll();
+      await queryClient.invalidateQueries({ queryKey: MEASUREMENTS_KEY });
+      await engine.refreshCounts();
+      return describeImportReports(reports, healthImport.listProviders());
     });
 
   const seed = () =>
@@ -244,7 +261,7 @@ export function DebugScreen() {
         </Card>
 
         <Card style={styles.card}>
-          <Text style={styles.heading}>Scenarios</Text>
+          <Text style={styles.heading}>Data and scenarios</Text>
           <Toggle
             label="ScaleCo app installed"
             value={scaleInstalled}
@@ -254,6 +271,13 @@ export function DebugScreen() {
             }}
           />
           <View style={styles.buttons}>
+            <Button
+              testID="import-dummy-data"
+              compact
+              label="Import dummy data"
+              onPress={importDummyData}
+              loading={busy === 'import'}
+            />
             <Button
               compact
               variant="secondary"

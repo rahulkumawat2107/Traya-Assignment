@@ -113,13 +113,9 @@ export function HistoryScreen() {
       <EmptyState
         testID="history-empty"
         title="No weight recorded yet"
-        message="Add your first measurement, or import readings from a connected source."
+        message="Add your first measurement to start tracking your weight."
         actionLabel="Add weight"
         onAction={() => openForm()}
-        secondaryLabel="Connect a source"
-        onSecondary={() =>
-          navigation.navigate('Tabs', { screen: 'Integrations' })
-        }
       />
     );
   } else {

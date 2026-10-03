@@ -52,7 +52,7 @@ If a Metro bundler from an earlier checkout is already running, restart it with 
 Checks:
 
 ```bash
-npm test            # Jest, 202 tests
+npm test            # Jest, 203 tests
 npm run typecheck   # tsc --noEmit, strict
 npm run lint        # ESLint
 ```
@@ -61,7 +61,7 @@ There is no backend to run. The mock server lives inside the app.
 
 ### A two-minute tour
 
-1. **Today** tab: every card starts at zero. Tap *Import data*; the cards fill with today's values. Tap a card to see its 7-day / 30-day / 3-month summary.
+1. **Today** tab: the app starts clean, every card at zero. Go to **Debug** → *Import dummy data*; back on Today the cards show today's values. Tap a card to see its 7-day / 30-day / 3-month summary.
 2. **History** tab → *Add weight*. The row appears at once with a *Waiting to sync* badge, then turns *Synced*.
 3. **Debug** tab → turn on *Simulate offline*. Add, edit and delete weights. The banner says the changes are saved on the device. Kill and reopen the app: they are still there, still pending. Turn offline off: they sync.
 4. **Debug** → set *Failure rate* to 100%, add a weight, watch the outbox show attempts and the next retry time; set it back to 0% and tap *Sync now*.
@@ -75,7 +75,9 @@ There is no backend to run. The mock server lives inside the app.
 | Area | Status |
 |---|---|
 | Weight: add, edit, delete, history | Implemented |
-| Dashboard: a card per metric with today's value and goal progress, zero until there is data; one-tap *Import data* | Implemented |
+| Dashboard: a card per metric with today's value and goal progress, zero until there is data | Implemented |
+| Dummy data: *Import dummy data* on the Debug screen runs the mock health providers through the integration layer | Implemented |
+| User-facing screen for connecting health sources | Not implemented. Import is triggered from the Debug screen only; there is no Sources tab. |
 | Metric detail: latest value, goal, 7 d / 30 d / 3 m summary | Implemented |
 | Five metrics: weight (manual + imported); steps, sleep, water (shown as glasses), workout (imported) | Implemented |
 | Calories | Not implemented (removed from scope). |
@@ -85,7 +87,7 @@ There is no backend to run. The mock server lives inside the app.
 | Lifecycle: crash recovery, sync on foreground and on reconnect | Implemented |
 | Mock API: latency, failures before/after the server acted, duplicates, reordering | Implemented |
 | Loading / error / empty / partial / offline / provider-unavailable states | Implemented |
-| Tests for the areas above | Implemented (202 tests) |
+| Tests for the areas above | Implemented (203 tests) |
 | Historical **charts** | Designed, not implemented (phase 2). The series query and hook exist and feed the range summary; only the chart component is missing. |
 | Goal editing UI | Not implemented. Goals are seeded defaults; the repository supports setting them. |
 | Discarding a change the server rejected | Partially implemented. Rejected changes are surfaced and can be retried; there is no "discard and revert" action. |
@@ -126,7 +128,7 @@ src/
   sync/           SyncEngine, triggers
   api/            ApiClient interface, wire types + guards, mock server/client
   integrations/   health provider interface, normalizers, mock providers
-  features/       dashboard, measurements, integrations, settings (debug)
+  features/       dashboard, measurements, settings (debug)
   shared/         components, services (Clock, IdGenerator, NetworkMonitor), state, theme
   test/           in-memory database, fakes
 ```
@@ -344,15 +346,15 @@ The debug screen's *Seed 3 years of data* inserts 3,285 readings to check this o
 |---|---|---|
 | Initial loading | App start; metric detail; history | "Opening your data…", then skeleton cards / a labelled spinner. The dashboard shows its zero cards immediately rather than a spinner |
 | Database could not open | App start | Error with the reason and *Try again* |
-| No health data | Dashboard | Every card reads zero, with "Nothing recorded yet…" and the *Import data* and *Add weight* buttons |
+| No health data | Dashboard | Every card reads zero, with "Nothing recorded today. Add your weight to get started." and an *Add weight* button |
 | No historical data in the range | Metric detail | "No data in the last 7 days. The reading above is the most recent one." |
-| Partial data | Dashboard | Metrics with data show their value; the rest stay at zero. An import where some sources fail still stores the rest and says "2 sources were not available" |
+| Partial data | Dashboard | Metrics with data show their value; the rest stay at zero. An import where some providers fail still stores the rest and names the ones that failed |
 | Offline | Banner on every screen | "Offline. 2 changes saved on this device will sync when you reconnect." |
 | Changes pending | Banner + per-row badge | "2 changes waiting to sync." · *Sync now* |
 | API failure / failed sync | Banner | "Sync failed: Request timed out. 2 changes waiting. Retrying at 10:04:32." · *Sync now* |
 | Change rejected by the server | Banner + row badge | "1 change could not be synced." · *Retry*; the reason is in the debug outbox |
-| Provider unavailable | Sources | "Not available — The ScaleCo app is not installed on this device." · *Try again* |
-| Permission denied | Sources | "Access not granted" · *Try again* |
+| Provider unavailable | Debug → *Import dummy data* | The result names each provider: "ScaleCo: not available" until *ScaleCo app installed* is switched on |
+| Permission denied | Debug → *Import dummy data* | "Pulse Health: access not granted" on the first attempt; a second attempt is granted |
 | Invalid form input | Form | A message under the field that is wrong |
 | Record deleted elsewhere | Edit form | "This measurement no longer exists" |
 | Unexpected crash | Any screen | Error boundary with *Try again*; "Your saved data is safe on this device." |
@@ -363,7 +365,7 @@ The banner's wording is decided by a pure function with a test per state ([SyncB
 
 ## Testing strategy
 
-202 tests in 20 suites, run with `npm test` in about two seconds. Effort went where a bug would silently lose or corrupt data.
+203 tests in 21 suites, run with `npm test` in about two seconds. Effort went where a bug would silently lose or corrupt data.
 
 | Area | What is covered |
 |---|---|
@@ -378,7 +380,7 @@ The banner's wording is decided by a pure function with a test per state ([SyncB
 | Normalisers | Three providers → identical output; malformed and unknown-unit records rejected |
 | Import service | Idempotency, unavailable, permission denied, partial failure |
 | Calculations | Effective value (including the 10:01–10:04 scenario), goals, summaries, formatting, form validation |
-| Components | Form shows field errors and saves locally without calling the network; dashboard zero state, *Import data*, manual-over-device, daily reset of weight, offline banner |
+| Components | Form shows field errors and saves locally without calling the network; dashboard clean zero state, values after a dummy import, manual-over-device, daily reset of weight, offline banner |
 
 Tests use the real implementations wherever possible: an in-memory SQLite database behind the same `SqlDriver`, and a fake API client backed by the real `MockServer`. Only time, ids and connectivity are faked.
 
@@ -460,7 +462,7 @@ This project was built with **Claude Code** (Anthropic) as a pair-programming ag
 | Charts in the first phase (victory-native + Skia + Reanimated) | Charts deferred to phase 2 | Spend the time-box on sync and correctness |
 | react-hook-form + zod | `useState` + a plain validator | One small form does not justify two libraries |
 | `expo-crypto` for ids | `uuid` | No Expo modules |
-| Dashboard with an empty state and three detailed cards | A "Today" grid: one card per metric, zero until there is data, with an *Import data* button | Simpler, and the same shape on first launch as later |
+| Dashboard with an empty state and three detailed cards | A "Today" grid: one card per metric, zero until there is data. Importing is a *Import dummy data* button on the Debug screen, with no Sources tab | Simpler, and the same shape on first launch as later |
 
 **Significant suggestions from the AI that were kept**
 
@@ -479,7 +481,7 @@ This project was built with **Claude Code** (Anthropic) as a pair-programming ag
 
 **How it was validated**
 
-- 202 automated tests, concentrated on sync, conflict resolution and persistence, running real SQL.
+- 203 automated tests, concentrated on sync, conflict resolution and persistence, running real SQL.
 - Strict TypeScript and ESLint clean.
 - **Android emulator, driven through `adb`:** import from each provider (including the permission-denied and unavailable states); add and edit a weight offline; with the app force-stopped, the device database was copied off and showed both queued operations and the pending row; after relaunch the two operations were sent as one request and the mock server held the edited value; 100% failure rate produced backoff retries and recovered; an edit injected from "another device" won on the next sync; delete produced a tombstone on the server; the 3-year seed, history paging and 3-month range.
 - **iOS simulator:** the app builds, launches, opens the database and renders the dashboard. The flows above were not driven on iOS.

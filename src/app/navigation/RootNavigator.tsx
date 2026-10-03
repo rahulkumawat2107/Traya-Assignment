@@ -6,7 +6,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { METRIC_LABEL } from '@/domain/measurement/format';
 import { DashboardScreen } from '@/features/dashboard/DashboardScreen';
 import { MetricDetailScreen } from '@/features/dashboard/MetricDetailScreen';
-import { IntegrationsScreen } from '@/features/integrations/IntegrationsScreen';
 import { HistoryScreen } from '@/features/measurements/HistoryScreen';
 import { MeasurementFormScreen } from '@/features/measurements/MeasurementFormScreen';
 import { DebugScreen } from '@/features/settings/DebugScreen';
@@ -19,7 +18,6 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const TAB_GLYPH: Record<keyof TabParamList, string> = {
   Dashboard: '◉',
   History: '≡',
-  Integrations: '⇄',
   Debug: '⚙',
 };
 
@@ -49,15 +47,6 @@ function Tabs() {
           title: 'Weight history',
           tabBarLabel: 'History',
           tabBarIcon: tabIcon('History'),
-        }}
-      />
-      <Tab.Screen
-        name="Integrations"
-        component={IntegrationsScreen}
-        options={{
-          title: 'Health sources',
-          tabBarLabel: 'Sources',
-          tabBarIcon: tabIcon('Integrations'),
         }}
       />
       <Tab.Screen

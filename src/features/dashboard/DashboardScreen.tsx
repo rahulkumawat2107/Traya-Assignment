@@ -16,7 +16,6 @@ import { ErrorState } from '@/shared/components/StateViews';
 import { colors, spacing, typography } from '@/shared/theme';
 import { formatDate } from '@/shared/utils/dates';
 import { TodayCard } from './components/TodayCard';
-import { describeImportAll, useImportAll } from './hooks/useImportAll';
 import { useTodaySummary } from './hooks/useTodaySummary';
 
 /**
@@ -27,7 +26,6 @@ export function DashboardScreen() {
   const navigation = useNavigation();
   const { engine, clock } = useServices();
   const today = useTodaySummary();
-  const importAll = useImportAll();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -43,12 +41,6 @@ export function DashboardScreen() {
     (metric: MetricType) => navigation.navigate('MetricDetail', { metric }),
     [navigation],
   );
-
-  const importMessage = importAll.isError
-    ? `Import failed: ${errorMessage(importAll.error)}`
-    : importAll.data
-    ? describeImportAll(importAll.data)
-    : null;
 
   return (
     <Screen>
@@ -77,30 +69,15 @@ export function DashboardScreen() {
 
         {!today.isPending && !today.hasAnyData ? (
           <Text style={styles.hint} testID="dashboard-hint">
-            Nothing recorded yet. Import data from your health sources or add
-            your weight.
+            Nothing recorded today. Add your weight to get started.
           </Text>
         ) : null}
 
-        <View style={styles.actions}>
-          <Button
-            testID="import-data"
-            label="Import data"
-            loading={importAll.isPending}
-            onPress={() => importAll.mutate()}
-          />
-          <Button
-            testID="dashboard-add-weight"
-            label="Add weight"
-            variant="secondary"
-            onPress={() => navigation.navigate('MeasurementForm')}
-          />
-        </View>
-        {importMessage ? (
-          <Text style={styles.message} testID="import-message">
-            {importMessage}
-          </Text>
-        ) : null}
+        <Button
+          testID="dashboard-add-weight"
+          label="Add weight"
+          onPress={() => navigation.navigate('MeasurementForm')}
+        />
       </ScrollView>
     </Screen>
   );
@@ -119,11 +96,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   hint: { ...typography.body, color: colors.muted, marginBottom: spacing.md },
-  actions: { gap: spacing.md, marginTop: spacing.xs },
-  message: {
-    ...typography.caption,
-    color: colors.text,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
 });
