@@ -1,12 +1,29 @@
-export type MetricType = 'weight' | 'steps' | 'sleep';
+export type MetricType =
+  | 'weight'
+  | 'steps'
+  | 'sleep'
+  | 'calories'
+  | 'water'
+  | 'workout';
 
-export const METRIC_TYPES: readonly MetricType[] = ['weight', 'steps', 'sleep'];
+/** Also the order of the cards on the dashboard. */
+export const METRIC_TYPES: readonly MetricType[] = [
+  'weight',
+  'steps',
+  'sleep',
+  'calories',
+  'water',
+  'workout',
+];
 
 /** Canonical storage unit per metric. Providers are converted to these on import. */
 export const METRIC_UNIT: Record<MetricType, string> = {
   weight: 'kg',
   steps: 'steps',
   sleep: 'min',
+  calories: 'kcal',
+  water: 'ml',
+  workout: 'min',
 };
 
 export const MANUAL_SOURCE = 'manual';

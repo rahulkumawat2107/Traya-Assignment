@@ -53,6 +53,19 @@ export class HealthImportService {
     return value === null ? null : Number(value);
   }
 
+  /**
+   * Imports from every provider, one after another. A provider that is
+   * unavailable or declines does not stop the others; each gets its own
+   * report.
+   */
+  async importAll(range?: TimeRange): Promise<ImportReport[]> {
+    const reports: ImportReport[] = [];
+    for (const provider of this.deps.providers) {
+      reports.push(await this.importFrom(provider.id, range));
+    }
+    return reports;
+  }
+
   async importFrom(
     providerId: string,
     range?: TimeRange,

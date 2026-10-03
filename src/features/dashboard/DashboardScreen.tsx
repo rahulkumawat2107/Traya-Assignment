@@ -1,31 +1,34 @@
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
 import { useServices } from '@/app/providers/ServicesProvider';
-import { queryKeys } from '@/app/queryClient';
 import { errorMessage } from '@/domain/errors';
-import { METRIC_TYPES } from '@/domain/measurement/types';
+import type { MetricType } from '@/domain/measurement/types';
 import { Button } from '@/shared/components/Button';
 import { Screen } from '@/shared/components/Screen';
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-} from '@/shared/components/StateViews';
-import { spacing } from '@/shared/theme';
-import { MetricCard } from './components/MetricCard';
-import { RangeSelector } from './components/RangeSelector';
+import { ErrorState } from '@/shared/components/StateViews';
+import { colors, spacing, typography } from '@/shared/theme';
+import { formatDate } from '@/shared/utils/dates';
+import { TodayCard } from './components/TodayCard';
+import { describeImportAll, useImportAll } from './hooks/useImportAll';
+import { useTodaySummary } from './hooks/useTodaySummary';
 
+/**
+ * Today at a glance: one card per metric. Every card shows zero until there
+ * is data, so the screen has the same shape on first launch as on day 100.
+ */
 export function DashboardScreen() {
   const navigation = useNavigation();
-  const { measurements, engine } = useServices();
+  const { engine, clock } = useServices();
+  const today = useTodaySummary();
+  const importAll = useImportAll();
   const [refreshing, setRefreshing] = useState(false);
-
-  const count = useQuery({
-    queryKey: queryKeys.count(),
-    queryFn: () => measurements.count(),
-  });
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -36,46 +39,16 @@ export function DashboardScreen() {
     }
   }, [engine]);
 
-  const addWeight = useCallback(
-    () => navigation.navigate('MeasurementForm'),
+  const openMetric = useCallback(
+    (metric: MetricType) => navigation.navigate('MetricDetail', { metric }),
     [navigation],
   );
 
-  if (count.isPending) {
-    return (
-      <Screen>
-        <LoadingState label="Loading your progress…" />
-      </Screen>
-    );
-  }
-  if (count.isError) {
-    return (
-      <Screen>
-        <ErrorState
-          title="Could not load your data"
-          message={errorMessage(count.error)}
-          onRetry={() => count.refetch()}
-        />
-      </Screen>
-    );
-  }
-  if (count.data === 0) {
-    return (
-      <Screen>
-        <EmptyState
-          testID="dashboard-empty"
-          title="No health data yet"
-          message="Record your weight or import data from a health source to start tracking your progress."
-          actionLabel="Add weight"
-          onAction={addWeight}
-          secondaryLabel="Connect a source"
-          onSecondary={() =>
-            navigation.navigate('Tabs', { screen: 'Integrations' })
-          }
-        />
-      </Screen>
-    );
-  }
+  const importMessage = importAll.isError
+    ? `Import failed: ${errorMessage(importAll.error)}`
+    : importAll.data
+    ? describeImportAll(importAll.data)
+    : null;
 
   return (
     <Screen>
@@ -85,17 +58,49 @@ export function DashboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <RangeSelector />
-        {METRIC_TYPES.map(metric => (
-          <MetricCard key={metric} metric={metric} />
-        ))}
-        <View style={styles.action}>
+        <Text style={styles.date}>{formatDate(clock.now())}</Text>
+
+        {today.error ? (
+          <ErrorState
+            compact
+            title="Could not load today's values"
+            message={errorMessage(today.error)}
+            onRetry={() => today.refetch()}
+          />
+        ) : null}
+
+        <View style={styles.grid} testID="today-grid">
+          {today.metrics.map(item => (
+            <TodayCard key={item.metric} item={item} onPress={openMetric} />
+          ))}
+        </View>
+
+        {!today.isPending && !today.hasAnyData ? (
+          <Text style={styles.hint} testID="dashboard-hint">
+            Nothing recorded yet. Import data from your health sources or add
+            your weight.
+          </Text>
+        ) : null}
+
+        <View style={styles.actions}>
+          <Button
+            testID="import-data"
+            label="Import data"
+            loading={importAll.isPending}
+            onPress={() => importAll.mutate()}
+          />
           <Button
             testID="dashboard-add-weight"
             label="Add weight"
-            onPress={addWeight}
+            variant="secondary"
+            onPress={() => navigation.navigate('MeasurementForm')}
           />
         </View>
+        {importMessage ? (
+          <Text style={styles.message} testID="import-message">
+            {importMessage}
+          </Text>
+        ) : null}
       </ScrollView>
     </Screen>
   );
@@ -103,5 +108,22 @@ export function DashboardScreen() {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg },
-  action: { marginTop: spacing.lg },
+  date: {
+    ...typography.caption,
+    color: colors.muted,
+    marginBottom: spacing.md,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  hint: { ...typography.body, color: colors.muted, marginBottom: spacing.md },
+  actions: { gap: spacing.md, marginTop: spacing.xs },
+  message: {
+    ...typography.caption,
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
 });

@@ -66,6 +66,46 @@ describe('the same reading from three providers', () => {
     ).toBe(450);
   });
 
+  it('normalizes water from millilitres and fluid ounces to millilitres', () => {
+    expect(
+      normalizeProviderA({
+        uid: 'a',
+        type: 'water_ml',
+        value: 1500,
+        timestamp: '2026-09-21T07:30:00.000Z',
+      }),
+    ).toMatchObject({ metric: 'water', value: 1500 });
+    expect(
+      normalizeProviderB({
+        identifier: 'b',
+        dataType: 'water',
+        quantity: 1500 / 29.5735,
+        unit: 'fl_oz',
+        startDate: 1000,
+      }),
+    ).toMatchObject({ metric: 'water', value: 1500 });
+  });
+
+  it('maps calories and workouts, keeping a zero-minute workout day', () => {
+    expect(
+      normalizeProviderB({
+        identifier: 'b',
+        dataType: 'calories',
+        quantity: 420.4,
+        unit: 'kcal',
+        startDate: 1000,
+      }),
+    ).toMatchObject({ metric: 'calories', value: 420 });
+    expect(
+      normalizeProviderA({
+        uid: 'a',
+        type: 'workout_minutes',
+        value: 0,
+        timestamp: '2026-09-21T07:30:00.000Z',
+      }),
+    ).toMatchObject({ metric: 'workout', value: 0 });
+  });
+
   it('agrees across the mock providers for every day they share', () => {
     const range = {
       from: MEASURED_AT - 5 * 86_400_000,

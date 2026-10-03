@@ -9,6 +9,7 @@ import { normalizeProviderB } from '../normalizers/providerB';
 import { mockDays } from './mockData';
 
 const KG_PER_LB = 0.45359237;
+const ML_PER_FL_OZ = 29.5735;
 
 /** Raw payload in Provider B's wire format. Exported for normalizer tests. */
 export function providerBPayload(range: TimeRange): unknown[] {
@@ -27,6 +28,20 @@ export function providerBPayload(range: TimeRange): unknown[] {
         dataType: 'steps',
         quantity: day.steps,
         unit: 'count',
+        startDate: Math.floor(day.evening / 1000),
+      },
+      {
+        identifier: `ph-c-${day.key}`,
+        dataType: 'calories',
+        quantity: day.activeKcal,
+        unit: 'kcal',
+        startDate: Math.floor(day.evening / 1000),
+      },
+      {
+        identifier: `ph-h-${day.key}`,
+        dataType: 'water',
+        quantity: day.waterMl / ML_PER_FL_OZ,
+        unit: 'fl_oz',
         startDate: Math.floor(day.evening / 1000),
       },
     );
@@ -50,7 +65,8 @@ export function providerBPayload(range: TimeRange): unknown[] {
 export class MockProviderB implements HealthProvider {
   readonly id = 'pulse';
   readonly name = 'Pulse Health';
-  readonly description = 'Phone health store: weight (lb) and steps';
+  readonly description =
+    'Phone health store: weight (lb), steps, calories, water (fl oz)';
 
   private permissionRequests = 0;
 

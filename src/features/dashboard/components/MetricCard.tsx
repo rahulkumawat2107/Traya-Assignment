@@ -57,8 +57,8 @@ function MetricCardComponent({ metric }: Props) {
       <Text style={styles.empty} testID={`metric-${metric}-empty`}>
         No {METRIC_LABEL[metric].toLowerCase()} data yet.
         {metric === 'weight'
-          ? ' Add a measurement or import from a connected source.'
-          : ' Import from a connected source to see it here.'}
+          ? ' Add a measurement or import data to see it here.'
+          : ' Import data to see it here.'}
       </Text>
     );
   } else {

@@ -1,4 +1,5 @@
-import { DAY_MS } from '@/domain/measurement/range';
+import { DAY_MS, deviceTzOffsetMs } from '@/domain/measurement/range';
+import { METRIC_TYPES } from '@/domain/measurement/types';
 import { createTestRepos, type TestRepos } from '@/test/createTestRepos';
 import { HealthImportService } from './HealthImportService';
 import type { HealthProvider, NormalizedReading } from './HealthProvider';
@@ -137,10 +138,33 @@ describe('mock providers end to end', () => {
 
     expect(report.failure).toBeNull();
     expect(report.rejected).toBe(1);
-    expect(report.imported).toBe(90);
-    expect(await repos.measurements.count('weight')).toBe(30);
-    expect(await repos.measurements.count('steps')).toBe(30);
-    expect(await repos.measurements.count('sleep')).toBe(30);
+    expect(report.imported).toBe(180);
+    for (const metric of METRIC_TYPES) {
+      expect(await repos.measurements.count(metric)).toBe(30);
+    }
+  });
+
+  it('reports today even when imported before the usual weigh-in time', async () => {
+    const earlyMorning = new Date(2026, 8, 21, 5, 0, 0).getTime();
+    repos.clock.set(earlyMorning);
+    await service(createHealthRegistry().providers).importFrom('fitband');
+
+    const today = await repos.measurements.getToday(
+      earlyMorning,
+      deviceTzOffsetMs(),
+    );
+    expect(Object.keys(today).sort()).toEqual([...METRIC_TYPES].sort());
+  });
+
+  it('imports from every source, isolating the ones that fail', async () => {
+    const reports = await service(createHealthRegistry().providers).importAll();
+
+    expect(reports.map(r => [r.providerId, r.failure?.kind ?? 'ok'])).toEqual([
+      ['fitband', 'ok'],
+      ['pulse', 'permission_denied'],
+      ['scaleco', 'unavailable'],
+    ]);
+    expect(reports[0]?.imported).toBe(180);
   });
 
   it('is denied by Pulse Health once, then allowed', async () => {

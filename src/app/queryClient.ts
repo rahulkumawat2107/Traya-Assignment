@@ -26,12 +26,17 @@ export const queryKeys = {
   series: (metric: string, range: string) =>
     ['measurements', 'series', metric, range] as const,
   latest: (metric: string) => ['measurements', 'latest', metric] as const,
+  today: (dayIndex: number) => ['measurements', 'today', dayIndex] as const,
   count: () => ['measurements', 'count'] as const,
   detail: (id: string) => ['measurements', 'detail', id] as const,
   goal: (metric: string) => ['goals', metric] as const,
+  goals: () => ['goals'] as const,
   outbox: () => ['outbox'] as const,
   lastImport: (providerId: string) => ['imports', providerId] as const,
 };
 
 /** Everything derived from measurement rows. */
 export const MEASUREMENTS_KEY = ['measurements'] as const;
+
+/** Last-import timestamps for every provider. */
+export const IMPORTS_KEY = ['imports'] as const;

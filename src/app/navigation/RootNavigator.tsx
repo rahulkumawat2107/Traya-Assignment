@@ -3,7 +3,9 @@ import { StyleSheet, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { METRIC_LABEL } from '@/domain/measurement/format';
 import { DashboardScreen } from '@/features/dashboard/DashboardScreen';
+import { MetricDetailScreen } from '@/features/dashboard/MetricDetailScreen';
 import { IntegrationsScreen } from '@/features/integrations/IntegrationsScreen';
 import { HistoryScreen } from '@/features/measurements/HistoryScreen';
 import { MeasurementFormScreen } from '@/features/measurements/MeasurementFormScreen';
@@ -38,7 +40,7 @@ function Tabs() {
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ title: 'Progress', tabBarIcon: tabIcon('Dashboard') }}
+        options={{ title: 'Today', tabBarIcon: tabIcon('Dashboard') }}
       />
       <Tab.Screen
         name="History"
@@ -82,6 +84,13 @@ export function RootNavigator() {
           options={({ route }) => ({
             title: route.params?.measurementId ? 'Edit weight' : 'Add weight',
             presentation: 'modal',
+          })}
+        />
+        <Stack.Screen
+          name="MetricDetail"
+          component={MetricDetailScreen}
+          options={({ route }) => ({
+            title: METRIC_LABEL[route.params.metric],
           })}
         />
       </Stack.Navigator>

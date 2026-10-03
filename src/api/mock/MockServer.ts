@@ -30,6 +30,9 @@ const VALUE_LIMITS: Record<string, [number, number]> = {
   weight: [1, 500],
   steps: [0, 200_000],
   sleep: [0, 1440],
+  calories: [0, 20_000],
+  water: [0, 20_000],
+  workout: [0, 1440],
 };
 
 /**

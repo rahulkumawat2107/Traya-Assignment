@@ -12,6 +12,9 @@ const TYPE_TO_METRIC: Record<string, MetricType> = {
   weight_kg: 'weight',
   step_count: 'steps',
   sleep_minutes: 'sleep',
+  active_kcal: 'calories',
+  water_ml: 'water',
+  workout_minutes: 'workout',
 };
 
 export const normalizeProviderA: Normalizer = raw => {

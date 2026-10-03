@@ -13,6 +13,12 @@ export function gramsToKg(grams: number): number {
   return roundTo(grams / 1000, 2);
 }
 
+const ML_PER_FL_OZ = 29.5735;
+
+export function flOzToMl(flOz: number): number {
+  return Math.round(flOz * ML_PER_FL_OZ);
+}
+
 export function hoursToMinutes(hours: number): number {
   return Math.round(hours * 60);
 }

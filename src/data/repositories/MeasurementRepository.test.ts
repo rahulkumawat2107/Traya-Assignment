@@ -330,6 +330,68 @@ describe('getSeries', () => {
   });
 });
 
+describe('getToday', () => {
+  const imported = (
+    metric: 'steps' | 'water',
+    value: number,
+    at: number,
+    id: string,
+  ) =>
+    repos.measurements.upsertImported({
+      metric,
+      value,
+      measuredAt: at,
+      source: 'provider:a',
+      externalId: id,
+    });
+
+  it('is empty when nothing was recorded today', async () => {
+    await imported('steps', 4000, NOON - DAY_MS, 'yesterday');
+    expect(await repos.measurements.getToday(NOON, UTC)).toEqual({});
+  });
+
+  it('returns one value per metric for today only', async () => {
+    await imported('steps', 4000, NOON - DAY_MS, 's-yesterday');
+    await imported('steps', 6000, NOON - 3_600_000, 's-today');
+    await imported('water', 1500, NOON, 'h-today');
+    await repos.measurements.create({
+      metric: 'weight',
+      value: 72.6,
+      measuredAt: NOON,
+    });
+
+    const today = await repos.measurements.getToday(NOON, UTC);
+
+    expect(Object.keys(today).sort()).toEqual(['steps', 'water', 'weight']);
+    expect(today.steps?.value).toBe(6000);
+    expect(today.water?.value).toBe(1500);
+    expect(today.weight?.value).toBe(72.6);
+  });
+
+  it('applies the daily rules and ignores deleted readings', async () => {
+    const manual = await repos.measurements.create({
+      metric: 'weight',
+      value: 72.6,
+      measuredAt: NOON,
+    });
+    await repos.measurements.upsertImported({
+      metric: 'weight',
+      value: 72.5,
+      measuredAt: NOON + 60_000,
+      source: 'provider:scale',
+      externalId: 'w1',
+    });
+    expect((await repos.measurements.getToday(NOON, UTC)).weight?.value).toBe(
+      72.6,
+    );
+
+    await repos.measurements.remove(manual.id);
+    expect((await repos.measurements.getToday(NOON, UTC)).weight?.value).toBe(
+      72.5,
+    );
+  });
+});
+
 describe('upsertImported', () => {
   const reading = {
     metric: 'weight' as const,

@@ -9,6 +9,7 @@ import {
 } from '@/domain/measurement/range';
 import {
   MANUAL_SOURCE,
+  METRIC_TYPES,
   type Measurement,
   type MetricType,
   type SeriesPoint,
@@ -18,7 +19,11 @@ import { resolveConflict } from '@/domain/sync/conflictResolver';
 import type { HlcClock } from '@/domain/sync/hlc';
 import type { Clock } from '@/shared/services/Clock';
 import type { IdGenerator } from '@/shared/services/IdGenerator';
-import type { SqlDriver, SqlExecutor } from '../db/SqlDriver';
+import {
+  placeholders,
+  type SqlDriver,
+  type SqlExecutor,
+} from '../db/SqlDriver';
 import {
   dtoToMeasurement,
   measurementToDto,
@@ -67,6 +72,9 @@ const DAILY_RULE: Record<MetricType, DailyRule> = {
   weight: 'effective',
   steps: 'max',
   sleep: 'max',
+  calories: 'max',
+  water: 'max',
+  workout: 'max',
 };
 
 // Bound numbers can arrive as floats; the casts keep the division integral.
@@ -338,14 +346,47 @@ export class MeasurementRepository {
         dayIndexToMs(day + 1, tzOffsetMs),
       ],
     );
-    const readings = result.rows.map(rowToMeasurement);
-    if (DAILY_RULE[metric] === 'effective') {
-      return pickEffectiveReading(readings) ?? null;
-    }
-    return readings.reduce<Measurement | null>(
-      (best, reading) => (!best || reading.value > best.value ? reading : best),
-      null,
+    return pickDailyReading(metric, result.rows.map(rowToMeasurement));
+  }
+
+  /**
+   * Today's value for every metric in one query. A metric with no reading
+   * today is simply absent from the result.
+   */
+  async getToday(
+    now: number,
+    tzOffsetMs: number,
+  ): Promise<Partial<Record<MetricType, Measurement>>> {
+    const day = localDayIndex(now, tzOffsetMs);
+    // `metric IN (...)` keeps the (user_id, metric, measured_at) index usable.
+    const result = await this.db.execute(
+      `SELECT * FROM measurements
+       WHERE user_id = ? AND metric IN (${placeholders(METRIC_TYPES.length)})
+         AND deleted_at IS NULL AND measured_at >= ? AND measured_at < ?`,
+      [
+        this.userId,
+        ...METRIC_TYPES,
+        dayIndexToMs(day, tzOffsetMs),
+        dayIndexToMs(day + 1, tzOffsetMs),
+      ],
     );
+    const byMetric = new Map<MetricType, Measurement[]>();
+    for (const reading of result.rows.map(rowToMeasurement)) {
+      const list = byMetric.get(reading.metric);
+      if (list) {
+        list.push(reading);
+      } else {
+        byMetric.set(reading.metric, [reading]);
+      }
+    }
+    const today: Partial<Record<MetricType, Measurement>> = {};
+    for (const [metric, readings] of byMetric) {
+      const picked = pickDailyReading(metric, readings);
+      if (picked) {
+        today[metric] = picked;
+      }
+    }
+    return today;
   }
 
   async count(metric?: MetricType): Promise<number> {
@@ -471,4 +512,18 @@ export class MeasurementRepository {
       ],
     );
   }
+}
+
+/** Reduces one day's readings for a metric to the one that represents it. */
+function pickDailyReading(
+  metric: MetricType,
+  readings: Measurement[],
+): Measurement | null {
+  if (DAILY_RULE[metric] === 'effective') {
+    return pickEffectiveReading(readings) ?? null;
+  }
+  return readings.reduce<Measurement | null>(
+    (best, reading) => (!best || reading.value > best.value ? reading : best),
+    null,
+  );
 }

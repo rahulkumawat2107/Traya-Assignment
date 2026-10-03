@@ -11,6 +11,9 @@ export interface MockDay {
   weightKg: number;
   steps: number;
   sleepMinutes: number;
+  activeKcal: number;
+  waterMl: number;
+  workoutMinutes: number;
 }
 
 /** Deterministic 0..1 value for a day, so the "device" always reports the same data. */
@@ -31,9 +34,12 @@ export function mockDays(range: TimeRange): MockDay[] {
 
   while (cursor.getTime() < range.to) {
     const dayNumber = Math.round(cursor.getTime() / DAY_MS);
-    const morning = new Date(cursor).setHours(7, 30, 0, 0);
-    const evening = new Date(cursor).setHours(21, 0, 0, 0);
-    if (morning >= range.from && morning < range.to) {
+    // Clamped to the end of the range, so today is reported even when it is
+    // imported before the usual weigh-in time.
+    const latest = range.to - 1;
+    const morning = Math.min(new Date(cursor).setHours(7, 30, 0, 0), latest);
+    const evening = Math.min(new Date(cursor).setHours(21, 0, 0, 0), latest);
+    if (morning >= range.from && cursor.getTime() < range.to) {
       const key = [
         cursor.getFullYear(),
         String(cursor.getMonth() + 1).padStart(2, '0'),
@@ -47,10 +53,13 @@ export function mockDays(range: TimeRange): MockDay[] {
       days.push({
         key,
         morning,
-        evening: Math.min(evening, range.to - 1),
+        evening,
         weightKg,
         steps: 3000 + Math.round(noise(dayNumber, 2) * 9000),
         sleepMinutes: 330 + Math.round(noise(dayNumber, 3) * 180),
+        activeKcal: 250 + Math.round(noise(dayNumber, 4) * 500),
+        waterMl: 1200 + Math.round(noise(dayNumber, 5) * 30) * 50,
+        workoutMinutes: Math.round(noise(dayNumber, 6) * 15) * 5,
       });
     }
     cursor.setDate(cursor.getDate() + 1);

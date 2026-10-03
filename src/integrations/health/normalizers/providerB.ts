@@ -1,5 +1,5 @@
 import type { MetricType } from '@/domain/measurement/types';
-import { hoursToMinutes, lbToKg } from '@/domain/measurement/units';
+import { flOzToMl, hoursToMinutes, lbToKg } from '@/domain/measurement/units';
 import type { Normalizer } from '../HealthProvider';
 import { isNonEmptyString, isNonNegativeNumber, isObject } from './guards';
 
@@ -16,6 +16,12 @@ const CONVERSIONS: Record<string, Conversion> = {
   'weight:kg': { metric: 'weight', convert: quantity => quantity },
   'steps:count': { metric: 'steps', convert: quantity => Math.round(quantity) },
   'sleep:hr': { metric: 'sleep', convert: hoursToMinutes },
+  'calories:kcal': {
+    metric: 'calories',
+    convert: quantity => Math.round(quantity),
+  },
+  'water:fl_oz': { metric: 'water', convert: flOzToMl },
+  'water:ml': { metric: 'water', convert: quantity => Math.round(quantity) },
 };
 
 export const normalizeProviderB: Normalizer = raw => {

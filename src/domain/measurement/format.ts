@@ -4,6 +4,9 @@ export const METRIC_LABEL: Record<MetricType, string> = {
   weight: 'Weight',
   steps: 'Steps',
   sleep: 'Sleep',
+  calories: 'Calories',
+  water: 'Water',
+  workout: 'Workout',
 };
 
 function withThousands(value: number): string {
@@ -20,7 +23,7 @@ export function formatDuration(minutes: number): string {
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
 }
 
-/** Value with its unit, e.g. "72.6 kg", "8,432 steps", "7h 30m". */
+/** Value with its unit, e.g. "72.6 kg", "8,432 steps", "7h 30m", "1.5 L". */
 export function formatMetricValue(metric: MetricType, value: number): string {
   switch (metric) {
     case 'weight':
@@ -28,14 +31,23 @@ export function formatMetricValue(metric: MetricType, value: number): string {
     case 'steps':
       return `${withThousands(value)} steps`;
     case 'sleep':
+    case 'workout':
       return formatDuration(value);
+    case 'calories':
+      return `${withThousands(value)} kcal`;
+    case 'water':
+      return `${(value / 1000).toFixed(1)} L`;
   }
 }
 
 /** Signed difference, e.g. "-1.2 kg", "+350 steps", "+25m". "No change" for zero. */
 export function formatMetricChange(metric: MetricType, change: number): string {
+  // Water is stored in ml but shown in litres to one decimal.
+  const step = metric === 'water' ? 100 : 1;
   const rounded =
-    metric === 'weight' ? Math.round(change * 10) / 10 : Math.round(change);
+    metric === 'weight'
+      ? Math.round(change * 10) / 10
+      : Math.round(change / step) * step;
   if (rounded === 0) {
     return 'No change';
   }

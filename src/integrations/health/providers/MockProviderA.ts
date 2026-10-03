@@ -31,6 +31,24 @@ export function providerAPayload(range: TimeRange): unknown[] {
         value: day.sleepMinutes,
         timestamp: new Date(day.morning).toISOString(),
       },
+      {
+        uid: `fb-c-${day.key}`,
+        type: 'active_kcal',
+        value: day.activeKcal,
+        timestamp: new Date(day.evening).toISOString(),
+      },
+      {
+        uid: `fb-h-${day.key}`,
+        type: 'water_ml',
+        value: day.waterMl,
+        timestamp: new Date(day.evening).toISOString(),
+      },
+      {
+        uid: `fb-x-${day.key}`,
+        type: 'workout_minutes',
+        value: day.workoutMinutes,
+        timestamp: new Date(day.evening).toISOString(),
+      },
     );
   }
   // Real feeds contain junk; one unusable record shows it is tolerated.
@@ -46,7 +64,7 @@ export function providerAPayload(range: TimeRange): unknown[] {
 export class MockProviderA implements HealthProvider {
   readonly id = 'fitband';
   readonly name = 'FitBand';
-  readonly description = 'Wearable: weight, steps and sleep';
+  readonly description = 'Wearable: all six metrics';
 
   async isAvailable(): Promise<ProviderAvailability> {
     return { available: true };

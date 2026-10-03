@@ -1,5 +1,6 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { MetricType } from '@/domain/measurement/types';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -12,6 +13,8 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   /** No id: add a new measurement. With id: edit that one. */
   MeasurementForm: { measurementId?: string } | undefined;
+  /** Trend for one metric over 7 days / 30 days / 3 months. */
+  MetricDetail: { metric: MetricType };
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
