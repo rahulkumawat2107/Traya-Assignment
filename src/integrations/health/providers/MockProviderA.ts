@@ -32,12 +32,6 @@ export function providerAPayload(range: TimeRange): unknown[] {
         timestamp: new Date(day.morning).toISOString(),
       },
       {
-        uid: `fb-c-${day.key}`,
-        type: 'active_kcal',
-        value: day.activeKcal,
-        timestamp: new Date(day.evening).toISOString(),
-      },
-      {
         uid: `fb-h-${day.key}`,
         type: 'water_ml',
         value: day.waterMl,
@@ -64,7 +58,7 @@ export function providerAPayload(range: TimeRange): unknown[] {
 export class MockProviderA implements HealthProvider {
   readonly id = 'fitband';
   readonly name = 'FitBand';
-  readonly description = 'Wearable: all six metrics';
+  readonly description = 'Wearable: all five metrics';
 
   async isAvailable(): Promise<ProviderAvailability> {
     return { available: true };

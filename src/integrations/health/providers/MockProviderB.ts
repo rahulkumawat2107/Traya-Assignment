@@ -31,13 +31,6 @@ export function providerBPayload(range: TimeRange): unknown[] {
         startDate: Math.floor(day.evening / 1000),
       },
       {
-        identifier: `ph-c-${day.key}`,
-        dataType: 'calories',
-        quantity: day.activeKcal,
-        unit: 'kcal',
-        startDate: Math.floor(day.evening / 1000),
-      },
-      {
         identifier: `ph-h-${day.key}`,
         dataType: 'water',
         quantity: day.waterMl / ML_PER_FL_OZ,
@@ -66,7 +59,7 @@ export class MockProviderB implements HealthProvider {
   readonly id = 'pulse';
   readonly name = 'Pulse Health';
   readonly description =
-    'Phone health store: weight (lb), steps, calories, water (fl oz)';
+    'Phone health store: weight (lb), steps, water (fl oz)';
 
   private permissionRequests = 0;
 

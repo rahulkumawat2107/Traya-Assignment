@@ -50,8 +50,7 @@ describe('DashboardScreen', () => {
       weight: '0.0 kg',
       steps: '0 steps',
       sleep: '0m',
-      calories: '0 kcal',
-      water: '0.0 L',
+      water: '0 glasses',
       workout: '0m',
     };
     for (const metric of METRIC_TYPES) {
@@ -71,7 +70,7 @@ describe('DashboardScreen', () => {
 
     // FitBand imports; Pulse declines once and ScaleCo is not installed.
     expect(await screen.findByTestId('import-message')).toHaveTextContent(
-      'Imported 180 readings. 2 sources were not available. Open Sources to see why.',
+      'Imported 150 readings. 2 sources were not available. Open Sources to see why.',
     );
     await waitFor(() =>
       expect(screen.getByTestId('today-steps-value')).not.toHaveTextContent(
@@ -112,7 +111,7 @@ describe('DashboardScreen', () => {
     );
   });
 
-  it('carries the last weight forward when none was recorded today', async () => {
+  it('resets weight to zero when none was recorded today', async () => {
     const context = await setup();
     await context.repos.measurements.create({
       metric: 'weight',
@@ -121,12 +120,13 @@ describe('DashboardScreen', () => {
     });
     await show(context);
 
+    await screen.findByTestId('today-grid');
     await waitFor(() =>
-      expect(screen.getByTestId('today-weight-value')).toHaveTextContent(
-        '73.4 kg',
-      ),
+      expect(screen.queryByTestId('dashboard-hint')).toBeTruthy(),
     );
-    expect(screen.getByText(/^Last measured /)).toBeTruthy();
+    expect(screen.getByTestId('today-weight-value')).toHaveTextContent(
+      '0.0 kg',
+    );
   });
 
   it('opens the trend for a metric when its card is pressed', async () => {

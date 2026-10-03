@@ -6,12 +6,6 @@ export const DEFAULT_GOALS: readonly Goal[] = [
   { metric: 'weight', startValue: 78, targetValue: 72, direction: 'decrease' },
   { metric: 'steps', startValue: 0, targetValue: 8000, direction: 'increase' },
   { metric: 'sleep', startValue: 0, targetValue: 480, direction: 'increase' },
-  {
-    metric: 'calories',
-    startValue: 0,
-    targetValue: 500,
-    direction: 'increase',
-  },
   { metric: 'water', startValue: 0, targetValue: 2000, direction: 'increase' },
   { metric: 'workout', startValue: 0, targetValue: 30, direction: 'increase' },
 ];

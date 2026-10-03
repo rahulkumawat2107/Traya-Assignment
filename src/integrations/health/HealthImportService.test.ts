@@ -138,7 +138,7 @@ describe('mock providers end to end', () => {
 
     expect(report.failure).toBeNull();
     expect(report.rejected).toBe(1);
-    expect(report.imported).toBe(180);
+    expect(report.imported).toBe(150);
     for (const metric of METRIC_TYPES) {
       expect(await repos.measurements.count(metric)).toBe(30);
     }
@@ -164,7 +164,7 @@ describe('mock providers end to end', () => {
       ['pulse', 'permission_denied'],
       ['scaleco', 'unavailable'],
     ]);
-    expect(reports[0]?.imported).toBe(180);
+    expect(reports[0]?.imported).toBe(150);
   });
 
   it('is denied by Pulse Health once, then allowed', async () => {

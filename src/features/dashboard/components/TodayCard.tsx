@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatMetricValue, METRIC_LABEL } from '@/domain/measurement/format';
 import type { MetricType } from '@/domain/measurement/types';
 import { colors, radius, spacing, typography } from '@/shared/theme';
-import { formatDate } from '@/shared/utils/dates';
 import type { TodayMetric } from '../hooks/useTodaySummary';
 
 interface Props {
@@ -12,9 +11,6 @@ interface Props {
 }
 
 function caption(item: TodayMetric): string {
-  if (item.reading && !item.isToday) {
-    return `Last measured ${formatDate(item.reading.measuredAt)}`;
-  }
   if (!item.goal) {
     return item.reading ? 'Today' : 'No data yet';
   }

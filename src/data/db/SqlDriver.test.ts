@@ -78,6 +78,33 @@ describe('migrate', () => {
     );
   });
 
+  it('clears data for the removed calories metric on upgrade', async () => {
+    const db = createRawTestDb();
+    await migrate(db, MIGRATIONS.slice(0, 1));
+    const insert = (id: string, metric: string) =>
+      db.execute(
+        `INSERT INTO measurements
+          (id, user_id, metric, value, measured_at, source, hlc, sync_status)
+         VALUES (?, 'u', ?, 1, 1, 'provider:a', 'h', 'pending')`,
+        [id, metric],
+      );
+    await insert('c1', 'calories');
+    await insert('w1', 'water');
+    await db.execute(
+      `INSERT INTO outbox (op_id, entity_id, op_type, payload, hlc, status, created_at)
+       VALUES ('o1', 'c1', 'create', '{}', 'h', 'pending', 1), ('o2', 'w1', 'create', '{}', 'h', 'pending', 1)`,
+    );
+
+    await migrate(db);
+
+    expect((await db.execute('SELECT id FROM measurements')).rows).toEqual([
+      { id: 'w1' },
+    ]);
+    expect((await db.execute('SELECT op_id FROM outbox')).rows).toEqual([
+      { op_id: 'o2' },
+    ]);
+  });
+
   it('applies only the migrations added since the last run', async () => {
     const db = createRawTestDb();
     await migrate(db, [['CREATE TABLE a (v INTEGER)']]);

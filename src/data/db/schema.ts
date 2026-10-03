@@ -49,6 +49,14 @@ export const MIGRATIONS: readonly string[][] = [
       PRIMARY KEY (user_id, metric)
     )`,
   ],
+  // The calories metric was removed. Clear what earlier builds stored so a
+  // queued change for it cannot be pushed and rejected.
+  [
+    `DELETE FROM outbox WHERE entity_id IN
+      (SELECT id FROM measurements WHERE metric = 'calories')`,
+    `DELETE FROM measurements WHERE metric = 'calories'`,
+    `DELETE FROM goals WHERE metric = 'calories'`,
+  ],
 ];
 
 export interface MeasurementRow {

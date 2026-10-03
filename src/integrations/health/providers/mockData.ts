@@ -11,7 +11,6 @@ export interface MockDay {
   weightKg: number;
   steps: number;
   sleepMinutes: number;
-  activeKcal: number;
   waterMl: number;
   workoutMinutes: number;
 }
@@ -57,7 +56,6 @@ export function mockDays(range: TimeRange): MockDay[] {
         weightKg,
         steps: 3000 + Math.round(noise(dayNumber, 2) * 9000),
         sleepMinutes: 330 + Math.round(noise(dayNumber, 3) * 180),
-        activeKcal: 250 + Math.round(noise(dayNumber, 4) * 500),
         waterMl: 1200 + Math.round(noise(dayNumber, 5) * 30) * 50,
         workoutMinutes: Math.round(noise(dayNumber, 6) * 15) * 5,
       });

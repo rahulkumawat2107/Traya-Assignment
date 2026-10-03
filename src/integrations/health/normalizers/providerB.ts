@@ -16,10 +16,6 @@ const CONVERSIONS: Record<string, Conversion> = {
   'weight:kg': { metric: 'weight', convert: quantity => quantity },
   'steps:count': { metric: 'steps', convert: quantity => Math.round(quantity) },
   'sleep:hr': { metric: 'sleep', convert: hoursToMinutes },
-  'calories:kcal': {
-    metric: 'calories',
-    convert: quantity => Math.round(quantity),
-  },
   'water:fl_oz': { metric: 'water', convert: flOzToMl },
   'water:ml': { metric: 'water', convert: quantity => Math.round(quantity) },
 };

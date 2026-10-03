@@ -1,8 +1,8 @@
 # Health Progress Tracker
 
-A React Native app for tracking weight, steps, sleep, calories, water and workouts. It is built offline-first: every change is saved to a local database first and synchronised with a (mocked) backend whenever a connection is available.
+A React Native app for tracking weight, steps, sleep, water and workouts. It is built offline-first: every change is saved to a local database first and synchronised with a (mocked) backend whenever a connection is available.
 
-The assignment asks for engineering decisions over feature count, so the work goes deep on one vertical slice — **weight: manual add/edit/delete → local database → outbox → sync → conflict resolution → dashboard** — and keeps the other five metrics thin (imported, read-only).
+The assignment asks for engineering decisions over feature count, so the work goes deep on one vertical slice — **weight: manual add/edit/delete → local database → outbox → sync → conflict resolution → dashboard** — and keeps the other four metrics thin (imported, read-only).
 
 ## Contents
 
@@ -52,7 +52,7 @@ If a Metro bundler from an earlier checkout is already running, restart it with 
 Checks:
 
 ```bash
-npm test            # Jest, 201 tests
+npm test            # Jest, 202 tests
 npm run typecheck   # tsc --noEmit, strict
 npm run lint        # ESLint
 ```
@@ -77,14 +77,15 @@ There is no backend to run. The mock server lives inside the app.
 | Weight: add, edit, delete, history | Implemented |
 | Dashboard: a card per metric with today's value and goal progress, zero until there is data; one-tap *Import data* | Implemented |
 | Metric detail: latest value, goal, 7 d / 30 d / 3 m summary | Implemented |
-| Six metrics: weight (manual + imported); steps, sleep, calories, water, workout (imported) | Implemented |
+| Five metrics: weight (manual + imported); steps, sleep, water (shown as glasses), workout (imported) | Implemented |
+| Calories | Not implemented (removed from scope). |
 | Import from a health source (three mocked providers, different shapes and units) | Implemented |
 | Local persistence, durable outbox, retry with backoff | Implemented |
 | Sync: push + pull, idempotency keys, ordering by logical clock, tombstones | Implemented |
 | Lifecycle: crash recovery, sync on foreground and on reconnect | Implemented |
 | Mock API: latency, failures before/after the server acted, duplicates, reordering | Implemented |
 | Loading / error / empty / partial / offline / provider-unavailable states | Implemented |
-| Tests for the areas above | Implemented (201 tests) |
+| Tests for the areas above | Implemented (202 tests) |
 | Historical **charts** | Designed, not implemented (phase 2). The series query and hook exist and feed the range summary; only the chart component is missing. |
 | Goal editing UI | Not implemented. Goals are seeded defaults; the repository supports setting them. |
 | Discarding a change the server rejected | Partially implemented. Rejected changes are surfaced and can be retried; there is no "discard and revert" action. |
@@ -210,7 +211,7 @@ The three mock providers describe the same underlying readings differently, as t
 
 | Provider | Weight | Sleep | Timestamp |
 |---|---|---|---|
-| FitBand (all six metrics) | `{ type: "weight_kg", value: 72.57 }` | minutes | ISO-8601 string |
+| FitBand (all five metrics) | `{ type: "weight_kg", value: 72.57 }` | minutes | ISO-8601 string |
 | Pulse Health (also water in fl oz) | `{ dataType: "weight", quantity: 160, unit: "lb" }` | hours | epoch seconds |
 | ScaleCo | `{ body_weight: 72570 }` (grams) | seconds | epoch milliseconds |
 
@@ -362,7 +363,7 @@ The banner's wording is decided by a pure function with a test per state ([SyncB
 
 ## Testing strategy
 
-201 tests in 20 suites, run with `npm test` in about two seconds. Effort went where a bug would silently lose or corrupt data.
+202 tests in 20 suites, run with `npm test` in about two seconds. Effort went where a bug would silently lose or corrupt data.
 
 | Area | What is covered |
 |---|---|
@@ -377,7 +378,7 @@ The banner's wording is decided by a pure function with a test per state ([SyncB
 | Normalisers | Three providers → identical output; malformed and unknown-unit records rejected |
 | Import service | Idempotency, unavailable, permission denied, partial failure |
 | Calculations | Effective value (including the 10:01–10:04 scenario), goals, summaries, formatting, form validation |
-| Components | Form shows field errors and saves locally without calling the network; dashboard zero state, *Import data*, manual-over-device, carried-forward weight, offline banner |
+| Components | Form shows field errors and saves locally without calling the network; dashboard zero state, *Import data*, manual-over-device, daily reset of weight, offline banner |
 
 Tests use the real implementations wherever possible: an in-memory SQLite database behind the same `SqlDriver`, and a fake API client backed by the real `MockServer`. Only time, ids and connectivity are faked.
 
@@ -390,7 +391,7 @@ Not covered: end-to-end tests on a device (Detox / Maestro), and the native modu
 - **Hand-written SQL instead of an ORM.** More verbose and not type-checked against the schema; in exchange the transaction behaviour is explicit and tested, and there is one less dependency.
 - **`sync_status` is stored on the row** rather than derived from the outbox. Cheaper to read in a list, at the cost of keeping two things consistent; they are always written in the same transaction.
 - **Whole-record last-write-wins.** Simple and predictable; it discards the losing edit without telling the user.
-- **Daily totals (steps, sleep, calories, water, workout) take the largest daily value across sources** instead of summing, to avoid double-counting when two providers track the same activity. Correct for daily totals, wrong for providers that report increments.
+- **Daily totals (steps, sleep, water, workout) take the largest daily value across sources** instead of summing, to avoid double-counting when two providers track the same activity. Correct for daily totals, wrong for providers that report increments.
 - **Day boundaries use the device's current UTC offset** for the whole window, so a day containing a daylight-saving change is cut an hour off.
 - **The mock server runs in-process.** It shares the client's clock and cannot be reached by a second real device; multi-device behaviour is exercised through tests and the debug screen rather than two phones.
 - **Imported weights are not editable**, only deletable; the provider owns them.
@@ -430,11 +431,11 @@ Not covered: end-to-end tests on a device (Detox / Maestro), and the native modu
 ## Assumptions
 
 - One user, no login.
-- Canonical units: kilograms, step count, minutes (sleep, workout), kilocalories, millilitres.
-- "Calories" means active calories burned.
-- Weight is a state, not a daily total: if it has not been measured today the dashboard shows the most recent reading, labelled with its date. The other cards reset to zero each day.
+- Canonical units: kilograms, step count, minutes (sleep, workout), millilitres.
+- Water is stored in millilitres and shown as whole glasses of 250 ml, so providers can keep reporting volumes.
+- The dashboard shows today only: every card, weight included, is zero until something is recorded today. Earlier readings are on the card's detail screen and in History.
 - Several readings per day are allowed; one is chosen for display.
-- Providers report steps, sleep, calories, water and workout as daily totals.
+- Providers report steps, sleep, water and workout as daily totals.
 - Device clocks may be wrong; correctness must not depend on them.
 - The server is the meeting point for devices, not the authority on the truth: it applies the same last-write-wins rule as the client.
 
@@ -478,7 +479,7 @@ This project was built with **Claude Code** (Anthropic) as a pair-programming ag
 
 **How it was validated**
 
-- 201 automated tests, concentrated on sync, conflict resolution and persistence, running real SQL.
+- 202 automated tests, concentrated on sync, conflict resolution and persistence, running real SQL.
 - Strict TypeScript and ESLint clean.
 - **Android emulator, driven through `adb`:** import from each provider (including the permission-denied and unavailable states); add and edit a weight offline; with the app force-stopped, the device database was copied off and showed both queued operations and the pending row; after relaunch the two operations were sent as one request and the mock server held the edited value; 100% failure rate produced backoff retries and recovered; an edit injected from "another device" won on the next sync; delete produced a tombstone on the server; the 3-year seed, history paging and 3-month range.
 - **iOS simulator:** the app builds, launches, opens the database and renders the dashboard. The flows above were not driven on iOS.

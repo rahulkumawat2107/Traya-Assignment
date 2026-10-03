@@ -86,24 +86,14 @@ describe('the same reading from three providers', () => {
     ).toMatchObject({ metric: 'water', value: 1500 });
   });
 
-  it('maps calories and workouts, keeping a zero-minute workout day', () => {
+  it('keeps a zero-minute workout day and rejects the removed calories type', () => {
+    const base = { uid: 'a', timestamp: '2026-09-21T07:30:00.000Z' };
     expect(
-      normalizeProviderB({
-        identifier: 'b',
-        dataType: 'calories',
-        quantity: 420.4,
-        unit: 'kcal',
-        startDate: 1000,
-      }),
-    ).toMatchObject({ metric: 'calories', value: 420 });
-    expect(
-      normalizeProviderA({
-        uid: 'a',
-        type: 'workout_minutes',
-        value: 0,
-        timestamp: '2026-09-21T07:30:00.000Z',
-      }),
+      normalizeProviderA({ ...base, type: 'workout_minutes', value: 0 }),
     ).toMatchObject({ metric: 'workout', value: 0 });
+    expect(
+      normalizeProviderA({ ...base, type: 'active_kcal', value: 400 }),
+    ).toBeNull();
   });
 
   it('agrees across the mock providers for every day they share', () => {

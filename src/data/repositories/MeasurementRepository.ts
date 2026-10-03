@@ -72,7 +72,6 @@ const DAILY_RULE: Record<MetricType, DailyRule> = {
   weight: 'effective',
   steps: 'max',
   sleep: 'max',
-  calories: 'max',
   water: 'max',
   workout: 'max',
 };

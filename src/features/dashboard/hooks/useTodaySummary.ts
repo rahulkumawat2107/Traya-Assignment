@@ -16,12 +16,10 @@ import {
 
 export interface TodayMetric {
   metric: MetricType;
-  /** 0 when there is nothing to show yet. */
+  /** 0 until something is recorded today. */
   value: number;
-  /** The reading behind the value; null when there is none. */
+  /** Today's reading behind the value; null when there is none. */
   reading: Measurement | null;
-  /** False when the value is carried over from an earlier day (weight only). */
-  isToday: boolean;
   goal: Goal | null;
   /** Null until there is a reading: no data is not "0% of the way there". */
   progress: GoalProgress | null;
@@ -30,10 +28,9 @@ export interface TodayMetric {
 /**
  * Today's value for every metric, for the dashboard grid.
  *
- * Daily totals (steps, sleep, calories, water, workout) are zero until
- * something is recorded today. Weight is a state rather than a total, so
- * when it has not been measured today the most recent reading is shown and
- * flagged as carried over.
+ * Every card, weight included, is zero until something is recorded today
+ * and resets when the date changes. Earlier readings are on the metric's
+ * detail screen.
  */
 export function useTodaySummary() {
   const { measurements, goals, clock } = useServices();
@@ -43,13 +40,7 @@ export function useTodaySummary() {
 
   const today = useQuery({
     queryKey: queryKeys.today(dayIndex),
-    queryFn: async () => {
-      const readings = await measurements.getToday(clock.now(), tzOffsetMs);
-      const lastWeight = readings.weight
-        ? null
-        : await measurements.getLatestEffective('weight', tzOffsetMs);
-      return { readings, lastWeight };
-    },
+    queryFn: () => measurements.getToday(clock.now(), tzOffsetMs),
   });
   const goalList = useQuery({
     queryKey: queryKeys.goals(),
@@ -57,18 +48,14 @@ export function useTodaySummary() {
   });
 
   const metrics = useMemo<TodayMetric[]>(() => {
-    const readings = today.data?.readings ?? {};
+    const readings = today.data ?? {};
     return METRIC_TYPES.map(metric => {
-      const todays = readings[metric] ?? null;
-      const carried =
-        metric === 'weight' ? today.data?.lastWeight ?? null : null;
-      const reading = todays ?? carried;
+      const reading = readings[metric] ?? null;
       const goal = goalList.data?.find(g => g.metric === metric) ?? null;
       return {
         metric,
         value: reading?.value ?? 0,
         reading,
-        isToday: todays !== null,
         goal,
         progress:
           goal && reading ? computeGoalProgress(goal, reading.value) : null,
