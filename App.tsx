@@ -1,45 +1,95 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useCallback, useEffect, useState } from 'react';
+import { StatusBar, StyleSheet, View } from 'react-native';
+import { ErrorBoundary } from 'react-error-boundary';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { bootstrap } from '@/app/bootstrap';
+import { RootNavigator } from '@/app/navigation/RootNavigator';
+import { ServicesProvider } from '@/app/providers/ServicesProvider';
+import type { AppServices } from '@/app/services';
+import { errorMessage } from '@/domain/errors';
+import { ErrorState, LoadingState } from '@/shared/components/StateViews';
+import { colors } from '@/shared/theme';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+type BootState =
+  | { phase: 'loading' }
+  | { phase: 'ready'; services: AppServices }
+  | { phase: 'error'; message: string };
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+// Module-level so React strict mode / fast refresh cannot start it twice and
+// open the database twice.
+let bootPromise: Promise<AppServices> | null = null;
+
+function boot(): Promise<AppServices> {
+  if (!bootPromise) {
+    bootPromise = bootstrap().catch(error => {
+      bootPromise = null;
+      throw error;
+    });
+  }
+  return bootPromise;
+}
+
+function CrashFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: unknown;
+  resetErrorBoundary: () => void;
+}) {
+  return (
+    <SafeAreaView style={styles.fill}>
+      <ErrorState
+        title="Something went wrong"
+        message={`${errorMessage(
+          error,
+        )}\n\nYour saved data is safe on this device.`}
+        onRetry={resetErrorBoundary}
+      />
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  const [state, setState] = useState<BootState>({ phase: 'loading' });
+
+  const start = useCallback(() => {
+    setState({ phase: 'loading' });
+    boot().then(
+      services => setState({ phase: 'ready', services }),
+      error => setState({ phase: 'error', message: errorMessage(error) }),
+    );
+  }, []);
+
+  useEffect(start, [start]);
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <StatusBar barStyle="dark-content" />
+      {state.phase === 'loading' ? (
+        <View style={styles.fill}>
+          <LoadingState label="Opening your data…" />
+        </View>
+      ) : null}
+      {state.phase === 'error' ? (
+        <SafeAreaView style={styles.fill}>
+          <ErrorState
+            title="Could not open your data"
+            message={state.message}
+            onRetry={start}
+          />
+        </SafeAreaView>
+      ) : null}
+      {state.phase === 'ready' ? (
+        <ErrorBoundary FallbackComponent={CrashFallback}>
+          <ServicesProvider services={state.services}>
+            <RootNavigator />
+          </ServicesProvider>
+        </ErrorBoundary>
+      ) : null}
     </SafeAreaProvider>
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  fill: { flex: 1, backgroundColor: colors.background },
 });
-
-export default App;
