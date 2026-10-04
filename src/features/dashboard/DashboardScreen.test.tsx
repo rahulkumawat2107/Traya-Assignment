@@ -19,8 +19,11 @@ jest.mock('@react-navigation/native', () => ({
 
 type Context = Awaited<ReturnType<typeof createTestServices>>;
 
+let current: Context | null = null;
+
 async function setup(): Promise<Context> {
   const context = await createTestServices();
+  current = context;
   context.repos.clock.set(Date.now());
   await context.repos.goals.ensureDefaults();
   return context;
@@ -37,6 +40,18 @@ async function show(context: Context) {
 beforeEach(() => {
   useSyncStatusStore.setState(INITIAL_SYNC_STATUS);
   mockNavigate.mockClear();
+});
+
+// A test may assert before every query has answered. Let them finish while
+// the component is still mounted, so no update lands after the test ends.
+afterEach(async () => {
+  const client = current?.services.queryClient;
+  if (client) {
+    await waitFor(() =>
+      expect(client.isFetching() + client.isMutating()).toBe(0),
+    );
+  }
+  current = null;
 });
 
 describe('DashboardScreen', () => {
@@ -145,7 +160,9 @@ describe('DashboardScreen', () => {
     );
 
     // Let the mutation settle so its last state update lands inside the test.
-    await waitFor(() => expect(context.services.queryClient.isMutating()).toBe(0));
+    await waitFor(() =>
+      expect(context.services.queryClient.isMutating()).toBe(0),
+    );
     expect(await context.repos.measurements.count('water')).toBe(1);
     expect(context.nudgeSync).toHaveBeenCalled();
     expect(context.api.pushCalls).toHaveLength(0);
