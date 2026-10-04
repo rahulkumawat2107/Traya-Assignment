@@ -1,11 +1,14 @@
 # Architecture
 
+Three views of the app: the components and how data moves between them, the
+screens, and two sequences that show why the offline design holds up.
+
 ## Components and data flow
 
 ```mermaid
 flowchart TB
   subgraph UI["UI — src/features, src/shared/components"]
-    Screens["Today · Metric detail · Weight history · Form · Debug"]
+    Screens["Today · Metric detail + chart · Weight history · Form · Debug"]
     Banner["SyncBanner"]
   end
 
@@ -18,7 +21,7 @@ flowchart TB
     HLC["Hybrid logical clock"]
     Resolver["Conflict resolver"]
     Coalesce["Outbox coalescing"]
-    Rules["Effective value · stats · goals"]
+    Rules["Effective value · stats · goals · chart geometry"]
   end
 
   subgraph Data["Data — src/data"]
@@ -61,6 +64,7 @@ flowchart TB
   Engine --> Api --> MockApi --> Server
 
   Providers --> Norm --> Import -- "same write path<br/>as manual entries" --> Repo
+  Screens -. "Debug: Import dummy data" .-> Import
 ```
 
 Rules the diagram encodes:
@@ -72,6 +76,21 @@ Rules the diagram encodes:
 - `ApiClient` and `HealthProvider` are the two external boundaries. The mock
   implementations sit behind them and are chosen in one place each
   (`src/app/bootstrap.ts`, `src/integrations/health/registry.ts`).
+
+## Screens
+
+```mermaid
+flowchart LR
+  Today["Today<br/>(tab)"] -- "tap a card" --> Detail["Metric detail<br/>chart · goal · summary"]
+  Today -- "Add weight" --> Form["Weight form<br/>add / edit / delete"]
+  Today -- "Add a glass" --> Today
+  Detail -- "weight: All measurements" --> History["Weight history<br/>paginated list"]
+  Detail -- "water: − / +" --> Detail
+  History -- "tap a row" --> Form
+  Debug["Debug<br/>(tab)"] -- "network controls · outbox<br/>import dummy data · seed" --> Debug
+```
+
+Every screen shows the sync banner (offline, pending, failed) under its header.
 
 ## A write made offline, then synced
 
