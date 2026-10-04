@@ -68,3 +68,31 @@ export function sourceLabel(source: string): string {
   const name = source.replace(/^provider:/, '');
   return `From ${name.charAt(0).toUpperCase()}${name.slice(1)}`;
 }
+
+/**
+ * One display unit in stored units, so chart axes tick on numbers the user
+ * reads: hours of sleep, glasses of water.
+ */
+export const METRIC_AXIS_UNIT: Record<MetricType, number> = {
+  weight: 1,
+  steps: 1,
+  sleep: 60,
+  water: ML_PER_GLASS,
+  workout: 1,
+};
+
+/** Short axis label, e.g. "72.5", "10k", "8h", "30m", "6". */
+export function formatAxisValue(metric: MetricType, value: number): string {
+  switch (metric) {
+    case 'weight':
+      return String(Math.round(value * 10) / 10);
+    case 'steps':
+      return value >= 1000 ? `${Math.round(value / 100) / 10}k` : String(value);
+    case 'sleep':
+      return `${Math.round((value / 60) * 10) / 10}h`;
+    case 'workout':
+      return `${Math.round(value)}m`;
+    case 'water':
+      return String(Math.round(value / ML_PER_GLASS));
+  }
+}

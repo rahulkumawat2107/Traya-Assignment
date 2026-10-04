@@ -1,4 +1,5 @@
 import {
+  formatAxisValue,
   formatDuration,
   formatMetricChange,
   formatMetricValue,
@@ -36,6 +37,16 @@ describe('format', () => {
     expect(formatMetricChange('weight', 0.04)).toBe('No change');
     expect(formatMetricChange('water', 500)).toBe('+2 glasses');
     expect(formatMetricChange('water', 100)).toBe('No change');
+  });
+
+  it('formats axis ticks in the unit the user reads', () => {
+    expect(formatAxisValue('weight', 72.5)).toBe('72.5');
+    expect(formatAxisValue('steps', 10_000)).toBe('10k');
+    expect(formatAxisValue('steps', 2500)).toBe('2.5k');
+    expect(formatAxisValue('steps', 500)).toBe('500');
+    expect(formatAxisValue('sleep', 480)).toBe('8h');
+    expect(formatAxisValue('workout', 30)).toBe('30m');
+    expect(formatAxisValue('water', 2000)).toBe('8');
   });
 
   it('describes where a reading came from', () => {

@@ -126,6 +126,29 @@ describe('DashboardScreen', () => {
     );
   });
 
+  it('adds a glass of water locally and queues it for sync', async () => {
+    const context = await setup();
+    await show(context);
+    await screen.findByTestId('dashboard-hint');
+
+    await fireEvent.press(screen.getByTestId('dashboard-add-water'));
+    await waitFor(() =>
+      expect(screen.getByTestId('today-water-value')).toHaveTextContent(
+        '1 glass',
+      ),
+    );
+    await fireEvent.press(screen.getByTestId('dashboard-add-water'));
+    await waitFor(() =>
+      expect(screen.getByTestId('today-water-value')).toHaveTextContent(
+        '2 glasses',
+      ),
+    );
+
+    expect(await context.repos.measurements.count('water')).toBe(1);
+    expect(context.nudgeSync).toHaveBeenCalled();
+    expect(context.api.pushCalls).toHaveLength(0);
+  });
+
   it('opens the trend for a metric when its card is pressed', async () => {
     const context = await setup();
     await show(context);

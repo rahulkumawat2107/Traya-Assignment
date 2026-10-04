@@ -52,7 +52,7 @@ If a Metro bundler from an earlier checkout is already running, restart it with 
 Checks:
 
 ```bash
-npm test            # Jest, 203 tests
+npm test            # Jest, 233 tests
 npm run typecheck   # tsc --noEmit, strict
 npm run lint        # ESLint
 ```
@@ -61,7 +61,7 @@ There is no backend to run. The mock server lives inside the app.
 
 ### A two-minute tour
 
-1. **Today** tab: the app starts clean, every card at zero. Go to **Debug** → *Import dummy data*; back on Today the cards show today's values. Tap a card to see its 7-day / 30-day / 3-month summary.
+1. **Today** tab: the app starts clean, every card at zero. Go to **Debug** → *Import dummy data*; back on Today the cards show today's values. Tap a card to see its chart and summary for 7 days, 30 days or 3 months; touch the chart to read a value. *Add a glass of water* on Today, or − / + on the Water screen.
 2. **History** tab → *Add weight*. The row appears at once with a *Waiting to sync* badge, then turns *Synced*.
 3. **Debug** tab → turn on *Simulate offline*. Add, edit and delete weights. The banner says the changes are saved on the device. Kill and reopen the app: they are still there, still pending. Turn offline off: they sync.
 4. **Debug** → set *Failure rate* to 100%, add a weight, watch the outbox show attempts and the next retry time; set it back to 0% and tap *Sync now*.
@@ -87,16 +87,17 @@ There is no backend to run. The mock server lives inside the app.
 | Lifecycle: crash recovery, sync on foreground and on reconnect | Implemented |
 | Mock API: latency, failures before/after the server acted, duplicates, reordering | Implemented |
 | Loading / error / empty / partial / offline / provider-unavailable states | Implemented |
-| Tests for the areas above | Implemented (203 tests) |
-| Historical **charts** | Designed, not implemented (phase 2). The series query and hook exist and feed the range summary; only the chart component is missing. |
+| Tests for the areas above | Implemented (233 tests) |
+| Historical charts: line for weight, columns for daily totals, goal line, touch to read a value | Implemented |
+| Water by hand: add or take back a glass from the dashboard or the water screen | Implemented |
 | Goal editing UI | Not implemented. Goals are seeded defaults; the repository supports setting them. |
 | Discarding a change the server rejected | Partially implemented. Rejected changes are surfaced and can be retried; there is no "discard and revert" action. |
 | OS-level background sync | Designed, not implemented |
 | Authentication, multiple users, login from another device | Designed, not implemented. The sync protocol already supports several devices and is tested for it. |
 | Real HealthKit / Health Connect adapter | Designed, not implemented. One interface to implement, one file to register it in. |
-| Manual entry for metrics other than weight | Not implemented. The repository and form are metric-agnostic underneath; only weight has a form. |
+| Manual entry for steps, sleep and workout | Not implemented. Weight has a form and water has glass buttons; the rest are import-only. |
 
-**Next, in order:** charts; "discard" for rejected changes; a real Health Connect adapter; background sync; authentication with a per-user database.
+**Next, in order:** "discard" for rejected changes; a real Health Connect adapter; background sync; authentication with a per-user database.
 
 ---
 
@@ -157,7 +158,7 @@ Four rules hold the design together:
 | Ordering | Hybrid logical clock | Device clocks are wrong or get changed; arrival order is meaningless offline | Wall-clock timestamps, server arrival order |
 | Mock backend | In-app `MockServer` behind `ApiClient` | Deterministic in tests, controllable from the debug screen | MSW — needs polyfills in React Native for little gain |
 | Navigation | React Navigation (native stack + bottom tabs) | Native transitions, typed params | — |
-| Charts | Deferred | Out of scope for phase 1 | — |
+| Charts | A small `TrendChart` component on `react-native-svg`, with the layout maths in a pure, tested module | At most 30 points per range, one native dependency, full control of marks and touch, no animation runtime | victory-native — needs Skia and Reanimated, three native dependencies for two chart types. gifted-charts — less control over marks |
 
 ### Things that changed during implementation
 
@@ -336,7 +337,7 @@ Designed for several years of data per user.
 
 The debug screen's *Seed 3 years of data* inserts 3,285 readings to check this on a device. On an Android emulator the insert took about 0.7 s, after which history scrolling (paging back through several months) and range switching stayed responsive. This was checked by hand, not profiled.
 
-**Scaling further:** a materialised `daily_aggregates` table maintained on write, so range queries stop touching raw rows; LTTB down-sampling for multi-year charts; FlashList if a list must hold thousands of loaded rows; moving any remaining heavy computation to a worklet or native module.
+**Scaling further:** a materialised `daily_aggregates` table maintained on write, so range queries stop touching raw rows; LTTB down-sampling if charts ever plot raw multi-year data (today they plot at most 30 SQL-aggregated buckets); FlashList if a list must hold thousands of loaded rows; moving any remaining heavy computation to a worklet or native module.
 
 ---
 
@@ -365,7 +366,7 @@ The banner's wording is decided by a pure function with a test per state ([SyncB
 
 ## Testing strategy
 
-203 tests in 21 suites, run with `npm test` in about two seconds. Effort went where a bug would silently lose or corrupt data.
+233 tests in 23 suites, run with `npm test` in about two seconds. Effort went where a bug would silently lose or corrupt data.
 
 | Area | What is covered |
 |---|---|
@@ -380,6 +381,8 @@ The banner's wording is decided by a pure function with a test per state ([SyncB
 | Normalisers | Three providers → identical output; malformed and unknown-unit records rejected |
 | Import service | Idempotency, unavailable, permission denied, partial failure |
 | Calculations | Effective value (including the 10:01–10:04 scenario), goals, summaries, formatting, form validation |
+| Charts | Round-numbered axes, zero baseline for columns, capped column width, gaps for missing days, goal kept in range, single point, touch selection |
+| Water | Adding and removing glasses, continuing from an imported total, floor at zero, daily cap, one record per day |
 | Components | Form shows field errors and saves locally without calling the network; dashboard clean zero state, values after a dummy import, manual-over-device, daily reset of weight, offline banner |
 
 Tests use the real implementations wherever possible: an in-memory SQLite database behind the same `SqlDriver`, and a fake API client backed by the real `MockServer`. Only time, ids and connectivity are faked.
@@ -393,7 +396,10 @@ Not covered: end-to-end tests on a device (Detox / Maestro), and the native modu
 - **Hand-written SQL instead of an ORM.** More verbose and not type-checked against the schema; in exchange the transaction behaviour is explicit and tested, and there is one less dependency.
 - **`sync_status` is stored on the row** rather than derived from the outbox. Cheaper to read in a list, at the cost of keeping two things consistent; they are always written in the same transaction.
 - **Whole-record last-write-wins.** Simple and predictable; it discards the losing edit without telling the user.
-- **Daily totals (steps, sleep, water, workout) take the largest daily value across sources** instead of summing, to avoid double-counting when two providers track the same activity. Correct for daily totals, wrong for providers that report increments.
+- **Daily totals from providers (steps, sleep, workout) take the largest daily value across sources** instead of summing, to avoid double-counting when two providers track the same activity. Correct for daily totals, wrong for providers that report increments.
+- **Water follows the weight rule: a manual total beats a provider's.** Adding a glass continues from the value on screen and stores it as the day's manual record, so once the user logs by hand a later provider total for that day is ignored.
+- **One manual water record per day**, with an id derived from the date, instead of a row per glass. Simple and it converges across devices, but two devices adding glasses offline resolve by last-write-wins rather than adding up.
+- **Charts are drawn with SVG, without animation.** Fine for 30 marks; a chart of thousands of raw points would need Skia or down-sampling.
 - **Day boundaries use the device's current UTC offset** for the whole window, so a day containing a daylight-saving change is cut an hour off.
 - **The mock server runs in-process.** It shares the client's clock and cannot be reached by a second real device; multi-device behaviour is exercised through tests and the debug screen rather than two phones.
 - **Imported weights are not editable**, only deletable; the provider owns them.
@@ -402,7 +408,7 @@ Not covered: end-to-end tests on a device (Detox / Maestro), and the native modu
 
 ## Known limitations
 
-- No charts yet (phase 2).
+- Charts have no pinch-zoom or panning; ranges are fixed at 7 days, 30 days and 3 months.
 - No authentication; a single hard-coded user.
 - Light theme only; no localisation; weight in kilograms only.
 - Seeded data is inserted as already synced and is not sent to the mock server. It exists to test performance.
@@ -417,16 +423,15 @@ Not covered: end-to-end tests on a device (Detox / Maestro), and the native modu
 
 ## What I would improve with more time
 
-1. Charts (the data path is ready).
-2. Discard-and-revert for rejected changes, with the server's reason shown inline on the row.
-3. A real Health Connect / HealthKit adapter, with incremental import using the provider's change token instead of a fixed 30-day window.
-4. Background sync.
-5. Authentication, a database file per user, and wiping on sign-out.
-6. End-to-end tests for the offline → kill → relaunch → sync path on both platforms.
-7. A `daily_aggregates` table and down-sampling for multi-year ranges.
-8. Database encryption (SQLCipher) — health data is sensitive.
-9. Error reporting and sync metrics (queue depth, retry counts, time-to-sync).
-10. Dark mode, accessibility audit, unit preferences.
+1. Discard-and-revert for rejected changes, with the server's reason shown inline on the row.
+2. A real Health Connect / HealthKit adapter, with incremental import using the provider's change token instead of a fixed 30-day window.
+3. Background sync.
+4. Authentication, a database file per user, and wiping on sign-out.
+5. End-to-end tests for the offline → kill → relaunch → sync path on both platforms.
+6. A `daily_aggregates` table and down-sampling for multi-year ranges.
+7. Database encryption (SQLCipher) — health data is sensitive.
+8. Error reporting and sync metrics (queue depth, retry counts, time-to-sync).
+9. Dark mode, accessibility audit, unit preferences.
 
 ---
 
@@ -459,7 +464,7 @@ This project was built with **Claude Code** (Anthropic) as a pair-programming ag
 |---|---|---|
 | Expo | React Native CLI | Direct control of the native projects |
 | FlashList | `FlatList` | Lists are paginated and stay small; no need for the dependency |
-| Charts in the first phase (victory-native + Skia + Reanimated) | Charts deferred to phase 2 | Spend the time-box on sync and correctness |
+| Charts in the first phase (victory-native + Skia + Reanimated) | Charts after the sync work was done, as a small SVG component | Spend the time-box on sync and correctness first; avoid three native dependencies |
 | react-hook-form + zod | `useState` + a plain validator | One small form does not justify two libraries |
 | `expo-crypto` for ids | `uuid` | No Expo modules |
 | Dashboard with an empty state and three detailed cards | A "Today" grid: one card per metric, zero until there is data. Importing is a *Import dummy data* button on the Debug screen, with no Sources tab | Simpler, and the same shape on first launch as later |
@@ -481,7 +486,7 @@ This project was built with **Claude Code** (Anthropic) as a pair-programming ag
 
 **How it was validated**
 
-- 203 automated tests, concentrated on sync, conflict resolution and persistence, running real SQL.
+- 233 automated tests, concentrated on sync, conflict resolution and persistence, running real SQL.
 - Strict TypeScript and ESLint clean.
 - **Android emulator, driven through `adb`:** import from each provider (including the permission-denied and unavailable states); add and edit a weight offline; with the app force-stopped, the device database was copied off and showed both queued operations and the pending row; after relaunch the two operations were sent as one request and the mock server held the edited value; 100% failure rate produced backoff retries and recovered; an edit injected from "another device" won on the next sync; delete produced a tombstone on the server; the 3-year seed, history paging and 3-month range.
 - **iOS simulator:** the app builds, launches, opens the database and renders the dashboard. The flows above were not driven on iOS.

@@ -392,6 +392,99 @@ describe('getToday', () => {
   });
 });
 
+describe('adjustDailyTotal', () => {
+  const GLASS = 250;
+  const MAX = 40 * GLASS;
+  const add = (delta: number, at = NOON) =>
+    repos.measurements.adjustDailyTotal('water', delta, at, UTC, MAX);
+  const todaysWater = async () =>
+    (await repos.measurements.getToday(NOON, UTC)).water;
+
+  it('creates one manual record for the day and keeps adding to it', async () => {
+    expect(await add(GLASS)).toBe(250);
+    expect(await add(GLASS, NOON + 60_000)).toBe(500);
+    expect(await add(GLASS, NOON + 120_000)).toBe(750);
+
+    expect(await repos.measurements.count('water')).toBe(1);
+    expect(await todaysWater()).toMatchObject({
+      value: 750,
+      source: 'manual',
+      syncStatus: 'pending',
+    });
+    // One create and two updates, which sync coalesces into a single request.
+    expect((await repos.outbox.getPending(10)).map(op => op.opType)).toEqual([
+      'create',
+      'update',
+      'update',
+    ]);
+  });
+
+  it('continues from an imported total, and the manual total then wins', async () => {
+    await repos.measurements.upsertImported({
+      metric: 'water',
+      value: 1500,
+      measuredAt: NOON - 3_600_000,
+      source: 'provider:a',
+      externalId: 'h1',
+    });
+
+    expect(await add(GLASS)).toBe(1750);
+    expect((await todaysWater())?.value).toBe(1750);
+
+    // A later, larger provider total does not override what the user logged.
+    await repos.measurements.upsertImported({
+      metric: 'water',
+      value: 3000,
+      measuredAt: NOON + 60_000,
+      source: 'provider:b',
+      externalId: 'h2',
+    });
+    expect((await todaysWater())?.value).toBe(1750);
+  });
+
+  it('can take a glass back but never goes below zero', async () => {
+    await add(GLASS);
+    expect(await add(-GLASS)).toBe(0);
+    expect(await add(-GLASS)).toBe(0);
+    expect((await todaysWater())?.value).toBe(0);
+  });
+
+  it('writes nothing when the total would not change', async () => {
+    expect(await add(-GLASS)).toBe(0);
+    expect(await repos.measurements.count('water')).toBe(0);
+    expect(await repos.outbox.getPending(10)).toHaveLength(0);
+  });
+
+  it('stops at the daily maximum', async () => {
+    expect(await add(MAX + GLASS)).toBe(MAX);
+    expect(await add(GLASS)).toBe(MAX);
+  });
+
+  it('starts a new record on a new day', async () => {
+    await add(GLASS);
+    const tomorrow = NOON + DAY_MS;
+    expect(
+      await repos.measurements.adjustDailyTotal(
+        'water',
+        GLASS,
+        tomorrow,
+        UTC,
+        MAX,
+      ),
+    ).toBe(250);
+    expect(await repos.measurements.count('water')).toBe(2);
+  });
+
+  it('shows up in the series for the day', async () => {
+    await add(GLASS * 3);
+    const series = await repos.measurements.getSeries(
+      'water',
+      seriesWindow('7d', NOON, UTC),
+    );
+    expect(series.map(p => p.value)).toEqual([750]);
+  });
+});
+
 describe('upsertImported', () => {
   const reading = {
     metric: 'weight' as const,

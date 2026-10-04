@@ -22,7 +22,10 @@ export function useDashboardSummary(metric: MetricType, range: HistoryRange) {
     queryFn: () => goals.get(metric),
   });
 
-  const summary = useMemo(() => summarize(series.data ?? []), [series.data]);
+  const summary = useMemo(
+    () => summarize(series.data?.points ?? []),
+    [series.data],
+  );
   const progress = useMemo(
     () =>
       goal.data && latest.data
@@ -40,6 +43,8 @@ export function useDashboardSummary(metric: MetricType, range: HistoryRange) {
     },
     /** The reading that represents the most recent day with data. */
     latest: latest.data ?? null,
+    /** Bucketed points and their window, for the chart. */
+    series: series.data ?? null,
     /** Null when the selected range has no data. */
     summary,
     goal: goal.data ?? null,

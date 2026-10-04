@@ -72,7 +72,8 @@ const DAILY_RULE: Record<MetricType, DailyRule> = {
   weight: 'effective',
   steps: 'max',
   sleep: 'max',
-  water: 'max',
+  // Manual wins, so glasses logged by hand are not overridden by a provider.
+  water: 'effective',
   workout: 'max',
 };
 
@@ -173,6 +174,64 @@ export class MeasurementRepository {
       }
       await this.updateLocal(tx, existing, reading);
       return 'updated';
+    });
+  }
+
+  /**
+   * Adds to (or subtracts from) today's total for a metric the user logs in
+   * increments, such as glasses of water.
+   *
+   * The new total starts from the value currently shown for today, whatever
+   * its source, and is stored as the day's manual record. The id is derived
+   * from the day, so every increment - on any device - edits one record
+   * instead of creating a row per glass. Returns the new total.
+   */
+  adjustDailyTotal(
+    metric: MetricType,
+    delta: number,
+    now: number,
+    tzOffsetMs: number,
+    max: number,
+  ): Promise<number> {
+    const day = localDayIndex(now, tzOffsetMs);
+    const id = `manual:${metric}:${day}`;
+    return this.db.transaction(async tx => {
+      const result = await tx.execute(
+        `SELECT * FROM measurements
+         WHERE user_id = ? AND metric = ? AND deleted_at IS NULL
+           AND measured_at >= ? AND measured_at < ?`,
+        [
+          this.userId,
+          metric,
+          dayIndexToMs(day, tzOffsetMs),
+          dayIndexToMs(day + 1, tzOffsetMs),
+        ],
+      );
+      const current =
+        pickDailyReading(metric, result.rows.map(rowToMeasurement))?.value ?? 0;
+      const next = Math.min(max, Math.max(0, current + delta));
+      if (next === current) {
+        return current;
+      }
+
+      const existing = await this.getById(id, tx);
+      if (existing) {
+        await this.updateLocal(
+          tx,
+          { ...existing, deletedAt: null },
+          { value: next, measuredAt: now },
+        );
+      } else {
+        await this.insertLocal(tx, {
+          id,
+          metric,
+          value: next,
+          measuredAt: now,
+          source: MANUAL_SOURCE,
+          externalId: null,
+        });
+      }
+      return next;
     });
   }
 

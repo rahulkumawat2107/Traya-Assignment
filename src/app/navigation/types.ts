@@ -12,7 +12,7 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   /** No id: add a new measurement. With id: edit that one. */
   MeasurementForm: { measurementId?: string } | undefined;
-  /** Trend for one metric over 7 days / 30 days / 3 months. */
+  /** Chart and summary for one metric over 7 days / 30 days / 3 months. */
   MetricDetail: { metric: MetricType };
 };
 

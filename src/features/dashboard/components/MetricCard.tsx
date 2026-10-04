@@ -14,6 +14,7 @@ import { colors, spacing, typography } from '@/shared/theme';
 import { formatDateTime } from '@/shared/utils/dates';
 import { useDashboardSummary } from '../hooks/useDashboardSummary';
 import { GoalProgressBar } from './GoalProgressBar';
+import { TrendChart } from './TrendChart';
 import { RangeSummary } from './RangeSummary';
 
 const RANGE_PHRASE: Record<HistoryRange, string> = {
@@ -41,6 +42,7 @@ function MetricCardComponent({ metric }: Props) {
         <Skeleton height={34} width="45%" />
         <Skeleton height={14} width="70%" />
         <Skeleton height={48} />
+        <Skeleton height={180} />
       </View>
     );
   } else if (data.error) {
@@ -71,6 +73,14 @@ function MetricCardComponent({ metric }: Props) {
         </Text>
         {data.goal && data.progress ? (
           <GoalProgressBar goal={data.goal} progress={data.progress} />
+        ) : null}
+        {data.series && data.summary ? (
+          <TrendChart
+            metric={metric}
+            points={data.series.points}
+            window={data.series.window}
+            goal={data.goal?.targetValue}
+          />
         ) : null}
         {data.summary ? (
           <RangeSummary metric={metric} summary={data.summary} />

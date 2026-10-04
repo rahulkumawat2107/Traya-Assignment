@@ -17,6 +17,7 @@ import { colors, spacing, typography } from '@/shared/theme';
 import { formatDate } from '@/shared/utils/dates';
 import { TodayCard } from './components/TodayCard';
 import { useTodaySummary } from './hooks/useTodaySummary';
+import { useWaterIntake } from './hooks/useWaterIntake';
 
 /**
  * Today at a glance: one card per metric. Every card shows zero until there
@@ -26,6 +27,7 @@ export function DashboardScreen() {
   const navigation = useNavigation();
   const { engine, clock } = useServices();
   const today = useTodaySummary();
+  const water = useWaterIntake();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -69,15 +71,25 @@ export function DashboardScreen() {
 
         {!today.isPending && !today.hasAnyData ? (
           <Text style={styles.hint} testID="dashboard-hint">
-            Nothing recorded today. Add your weight to get started.
+            Nothing recorded today. Add your weight or a glass of water to get
+            started.
           </Text>
         ) : null}
 
-        <Button
-          testID="dashboard-add-weight"
-          label="Add weight"
-          onPress={() => navigation.navigate('MeasurementForm')}
-        />
+        <View style={styles.actions}>
+          <Button
+            testID="dashboard-add-weight"
+            label="Add weight"
+            onPress={() => navigation.navigate('MeasurementForm')}
+          />
+          <Button
+            testID="dashboard-add-water"
+            label="Add a glass of water"
+            variant="secondary"
+            loading={water.isPending}
+            onPress={() => water.mutate(1)}
+          />
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -96,4 +108,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   hint: { ...typography.body, color: colors.muted, marginBottom: spacing.md },
+  actions: { gap: spacing.md },
 });

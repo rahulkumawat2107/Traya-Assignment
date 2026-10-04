@@ -5,8 +5,9 @@ import { Screen } from '@/shared/components/Screen';
 import { spacing } from '@/shared/theme';
 import { MetricCard } from './components/MetricCard';
 import { RangeSelector } from './components/RangeSelector';
+import { WaterStepper } from './components/WaterStepper';
 
-/** Historical progress for one metric: latest value, goal and range summary. */
+/** Historical progress for one metric: latest value, goal, chart and summary. */
 export function MetricDetailScreen({
   route,
 }: RootStackScreenProps<'MetricDetail'>) {
@@ -14,6 +15,7 @@ export function MetricDetailScreen({
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
         <RangeSelector />
+        {route.params.metric === 'water' ? <WaterStepper /> : null}
         <MetricCard metric={route.params.metric} />
       </ScrollView>
     </Screen>
