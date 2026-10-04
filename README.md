@@ -62,11 +62,11 @@ There is no backend to run. The mock server lives inside the app.
 ### A two-minute tour
 
 1. **Today** tab: the app starts clean, every card at zero. Go to **Debug** → *Import dummy data*; back on Today the cards show today's values. Tap a card to see its chart and summary for 7 days, 30 days or 3 months; touch the chart to read a value. *Add a glass of water* on Today, or − / + on the Water screen.
-2. **History** tab → *Add weight*. The row appears at once with a *Waiting to sync* badge, then turns *Synced*.
+2. **Today** → *Add weight*. The Weight card updates at once. Tap the Weight card → *All measurements*: the new row has a *Waiting to sync* badge, then turns *Synced*. Tap a row to edit or delete it.
 3. **Debug** tab → turn on *Simulate offline*. Add, edit and delete weights. The banner says the changes are saved on the device. Kill and reopen the app: they are still there, still pending. Turn offline off: they sync.
 4. **Debug** → set *Failure rate* to 100%, add a weight, watch the outbox show attempts and the next retry time; set it back to 0% and tap *Sync now*.
 5. **Debug** → *Edit from another device* changes your newest weight on the server with a newer timestamp; after the sync your device shows the other device's value.
-6. **Debug** → *Seed 3 years of data*, then scroll History and switch ranges on the dashboard.
+6. **Debug** → *Seed 3 years of data*, then open Weight → *All measurements* and scroll, and switch ranges on the metric screens.
 
 ---
 

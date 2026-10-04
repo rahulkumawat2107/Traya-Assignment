@@ -17,7 +17,6 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 const TAB_GLYPH: Record<keyof TabParamList, string> = {
   Dashboard: '◉',
-  History: '≡',
   Debug: '⚙',
 };
 
@@ -39,15 +38,6 @@ function Tabs() {
         name="Dashboard"
         component={DashboardScreen}
         options={{ title: 'Today', tabBarIcon: tabIcon('Dashboard') }}
-      />
-      <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{
-          title: 'Weight history',
-          tabBarLabel: 'History',
-          tabBarIcon: tabIcon('History'),
-        }}
       />
       <Tab.Screen
         name="Debug"
@@ -81,6 +71,11 @@ export function RootNavigator() {
           options={({ route }) => ({
             title: METRIC_LABEL[route.params.metric],
           })}
+        />
+        <Stack.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{ title: 'Weight history' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

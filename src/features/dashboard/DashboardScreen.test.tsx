@@ -144,6 +144,8 @@ describe('DashboardScreen', () => {
       ),
     );
 
+    // Let the mutation settle so its last state update lands inside the test.
+    await waitFor(() => expect(context.services.queryClient.isMutating()).toBe(0));
     expect(await context.repos.measurements.count('water')).toBe(1);
     expect(context.nudgeSync).toHaveBeenCalled();
     expect(context.api.pushCalls).toHaveLength(0);
